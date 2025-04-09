@@ -23,21 +23,21 @@ talkative_template = (
 
 
 class Paraphrase(BaseAxisAugmenter):
-    def __init__(self, k: int = 1):
+    def __init__(self, n_augments: int = 1):
         """
         Initialize the paraphrse augmenter.
 
         Args:
             k: number of paraphrase needed
         """
-        self.k = k
+        super().__init__(n_augments=n_augments)
 
-    def build_rephrasing_prompt(self, template: str, k: int, prompt: str) -> \
+    def build_rephrasing_prompt(self, template: str, n_augments: int, prompt: str) -> \
             str:
-        return template.format(k=k, prompt=prompt)
+        return template.format(n_augments=n_augments, prompt=prompt)
 
     def augment(self, prompt:str) -> List[str]:
-        prompt = self.build_rephrasing_prompt(talkative_template, self.k, prompt)
+        prompt = self.build_rephrasing_prompt(talkative_template, self.n_augments, prompt)
         response = get_completion(prompt)
         return ast.literal_eval(response)
 
