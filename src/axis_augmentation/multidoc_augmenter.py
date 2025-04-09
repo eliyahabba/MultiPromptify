@@ -26,7 +26,7 @@ class multidoc_augmenter():
         augmented_docs = docs + irrelevant_docs
         return augmented_docs
 
-    def permute_docs_order(self, docs: List[str], n_permutations: int = 3) -> list[tuple[str, ...]]:
+    def permute_docs_order(self, docs: List[str], n_permutations: int = 3) -> list[list[str, ...]]:
         """
         Generates variations of the order of the documents in the list.
         :param docs: a list of documents to augment
@@ -40,7 +40,40 @@ class multidoc_augmenter():
         # generate all permutations of the docs
         n_iterations = min(n_permutations, factorial(len(docs)))
         augments = sample(list(permutations(docs)), n_iterations)
-        return augments
+        return [list(item) for item in augments]
+
+    def concatenate_docs(self, docs: List[str], concat_type: str = "single_doc") -> str:
+        """
+        Concatenate the documents into a single string.
+        :param docs: a list of documents to concatenate
+        :param concat_type: the type of concatenation to perform. Choose from: ["single_doc", "2_newlines", "titles", "dashes"],
+        or choose "special_<seperator>" where "seperator" is a specific string to use as a separator
+        :return: a single string containing all documents concatenated
+        """
+        if concat_type == "single_doc":
+            # Add a single newline between documents
+            return "\n".join(docs)
+
+        elif concat_type == "2_newlines":
+            # Add two newlines between documents
+            return "\n\n".join(docs)
+
+        elif concat_type == "titles":
+            # Add titles to each document
+            return "\n".join([f"Document {i + 1}:\n{doc}\n" for i, doc in enumerate(docs)])
+
+        elif concat_type == "dashes":
+            # Add dashes between documents
+            return "\n".join([f"{doc}\n{'-' * 20}" for i, doc in enumerate(docs)])
+
+        elif "special_" in concat_type:
+            # Use the specified separator
+            separator = concat_type.split("special_")[1]
+            return separator.join(docs)
+
+        else:
+            raise ValueError(
+                f"Invalid concat_type: {concat_type}. Choose from: ['single_doc', '2_newlines', 'titles', 'dashes'] or provide a specific string as a separator.")
 
 
 if __name__ == "__main__":  # Example usage
@@ -53,3 +86,5 @@ if __name__ == "__main__":  # Example usage
     augmenter = multidoc_augmenter()
     docs_extended = augmenter.add_random_contexts(docs, corpus, 2)
     docs_permutations = augmenter.permute_docs_order(docs_extended, 5)
+    docs_concatenated = augmenter.concatenate_docs(docs_permutations[0], "titles")
+    print(docs_concatenated)
