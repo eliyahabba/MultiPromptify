@@ -126,5 +126,5 @@ if __name__ == '__main__':
     #print("Butter Text:", butter_texts)
 
     # Example usage of change_char_case
-    char_case_texts = change_char_case(inputs[0], prob=0.2, max_outputs=3)
-    print("Change Char Case Text:", char_case_texts)
+    # char_case_texts = change_char_case(inputs[0], prob=0.2, max_outputs=3)
+    # print("Change Char Case Text:", char_case_texts)
