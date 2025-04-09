@@ -114,4 +114,58 @@ class FewShotConstants:
     EXAMPLE_SEPARATOR = "\n\n"
     
     # Default random seed for sampling
-    DEFAULT_RANDOM_SEED = 42 
+    DEFAULT_RANDOM_SEED = 42
+
+# Constants for NonLLMAugmenter
+class TextSurfaceAugmenterConstants:
+    # White space options
+    WHITE_SPACE_OPTIONS = ["\n", "\t", " ", ""]
+    
+    # Keyboard layout for butter finger
+    QUERTY_KEYBOARD = {
+        "q": "qwasedzx",
+        "w": "wqesadrfcx",
+        "e": "ewrsfdqazxcvgt",
+        "r": "retdgfwsxcvgt",
+        "t": "tryfhgedcvbnju",
+        "y": "ytugjhrfvbnji",
+        "u": "uyihkjtgbnmlo",
+        "i": "iuojlkyhnmlp",
+        "o": "oipklujm",
+        "p": "plo['ik",
+        "a": "aqszwxwdce",
+        "s": "swxadrfv",
+        "d": "decsfaqgbv",
+        "f": "fdgrvwsxyhn",
+        "g": "gtbfhedcyjn",
+        "h": "hyngjfrvkim",
+        "j": "jhknugtblom",
+        "k": "kjlinyhn",
+        "l": "lokmpujn",
+        "z": "zaxsvde",
+        "x": "xzcsdbvfrewq",
+        "c": "cxvdfzswergb",
+        "v": "vcfbgxdertyn",
+        "b": "bvnghcftyun",
+        "n": "nbmhjvgtuik",
+        "m": "mnkjloik",
+        " ": " "
+    }
+    
+    # Default probabilities
+    DEFAULT_TYPO_PROB = 0.05
+    DEFAULT_CASE_CHANGE_PROB = 0.1
+    
+    # Default max outputs
+    DEFAULT_MAX_OUTPUTS = 1
+    
+    # Random ranges for white space generation
+    MIN_WHITESPACE_COUNT = 1
+    MAX_WHITESPACE_COUNT = 3
+    
+    # Random index range for white space options
+    MIN_WHITESPACE_INDEX = 0
+    MAX_WHITESPACE_INDEX = 2
+    
+    # Transformation techniques
+    TRANSFORMATION_TECHNIQUES = ["typos", "capitalization", "punctuation", "spacing"]
