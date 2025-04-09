@@ -46,7 +46,7 @@ class Paraphrase(BaseAxisAugmenter):
         return templete.format(k=k, prompt=prompt)
 
     def augment(self,prompt:str) -> List[str]:
-        prompt =self.build_rephrasing_prompt(self,self.k,talkative)
+        prompt =self.build_rephrasing_prompt(talkative,self.k,prompt)
         current_prompt = [
             {"role": "user", "content": prompt}
         ]
@@ -57,5 +57,5 @@ class Paraphrase(BaseAxisAugmenter):
         return ast.literal_eval(response)
 
 
-# if __name__ == '__main__':
-#     trying_func(5)
+if __name__ == '__main__':
+
