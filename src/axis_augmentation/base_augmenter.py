@@ -1,6 +1,3 @@
-from typing import List, Dict, Any
-
-
 class BaseAxisAugmenter:
     """
     Base class for all axis augmenters.
@@ -22,16 +19,16 @@ class BaseAxisAugmenter:
         """Get the name of this augmenter."""
         return self.__class__.__name__
 
-    def augment(self, prompt: str, identification_data: Dict[str, Any] = None) -> List[str]:
-        """
-        Generate variations of the prompt based on identification data.
-        
-        Args:
-            prompt: The original prompt text
-            identification_data: Data from the identifier
-            
-        Returns:
-            List of variations of this axis
-        """
-        # Default implementation returns the original prompt
-        return [prompt]
+    # def augment(self, prompt: str, identification_data: Dict[str, Any] = None) -> List[str]:
+    #     """
+    #     Generate variations of the prompt based on identification data.
+    #
+    #     Args:
+    #         prompt: The original prompt text
+    #         identification_data: Data from the identifier
+    #
+    #     Returns:
+    #         List of variations of this axis
+    #     """
+    #     # Default implementation returns the original prompt
+    #     return [prompt]

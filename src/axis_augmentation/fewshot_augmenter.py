@@ -1,3 +1,6 @@
+import random
+from typing import List
+
 from base_augmenter import BaseAxisAugmenter
 
 
@@ -15,11 +18,12 @@ class FewShotAugmenter(BaseAxisAugmenter):
             min_examples: Minimum number of examples to use
             max_examples: Maximum number of examples to use
         """
+        super().__init__()
         self.min_examples = min_examples
         self.max_examples = max_examples
 
     def augment(
-        self, prompt: str, examples: List[str], shuffle: bool = False
+            self, prompt: str, examples: List[str], shuffle: bool = False
     ) -> List[str]:
         """
         Generate variations of the prompt by adding few-shot examples.
@@ -38,7 +42,7 @@ class FewShotAugmenter(BaseAxisAugmenter):
         augmented_prompts = []
 
         for num_examples in range(
-            self.min_examples, min(self.max_examples + 1, len(examples) + 1)
+                self.min_examples, min(self.max_examples + 1, len(examples) + 1)
         ):
             if shuffle:
                 # Create shuffled examples
@@ -66,6 +70,5 @@ class FewShotAugmenter(BaseAxisAugmenter):
         """
         formatted_examples = "\n\n".join(examples)
         return f"{formatted_examples}\n\n{question}"
-
 
 #
