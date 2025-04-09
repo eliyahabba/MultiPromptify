@@ -1,71 +1,61 @@
+from typing import Dict, List
+
+import pandas as pd
 from base_augmenter import BaseAxisAugmenter
 
 
 class FewShotAugmenter(BaseAxisAugmenter):
     """
-    Augmenter that handles few-shot examples for a given question.
-    Controls the number and order of examples.
+    Augmenter that handles few-shot examples for all questions in a dataframe.
+    Controls the number and order of examples for each question.
     """
 
-    def __init__(self, min_examples: int = 1, max_examples: int = 5):
+    def __init__(self, num_examples: int = 1):
+        self.num_examples = num_examples
+
+    def augment_all_questions(self, df) -> Dict[str, List[List[str]]]:
         """
-        Initialize the few-shot augmenter.
+        Process all questions in the dataframe and return few-shot examples for each.
 
         Args:
-            min_examples: Minimum number of examples to use
-            max_examples: Maximum number of examples to use
-        """
-        self.min_examples = min_examples
-        self.max_examples = max_examples
-
-    def augment(
-        self, prompt: str, examples: List[str], shuffle: bool = False
-    ) -> List[str]:
-        """
-        Generate variations of the prompt by adding few-shot examples.
-
-        Args:
-            prompt: The original question/prompt
-            examples: List of example Q&A pairs
-            shuffle: Whether to shuffle the examples or keep original order
+            df: DataFrame with 'input' and 'output' columns
 
         Returns:
-            List of prompts with different few-shot configurations
+            Dictionary where keys are input questions and values are lists of
+            few-shot examples (each as [input, output])
         """
-        if not examples:
-            return [prompt]
+        if "input" not in df.columns or "output" not in df.columns:
+            raise ValueError("Dataframe must contain columns - 'input', 'output'")
 
-        augmented_prompts = []
+        result = {}
 
-        for num_examples in range(
-            self.min_examples, min(self.max_examples + 1, len(examples) + 1)
-        ):
-            if shuffle:
-                # Create shuffled examples
-                shuffled_examples = examples.copy()
-                random.shuffle(shuffled_examples)
-                selected_examples = shuffled_examples[:num_examples]
-            else:
-                # Original order
-                selected_examples = examples[:num_examples]
+        # Process each question in the dataframe
+        for _, row in df.iterrows():
+            question = row["input"]
+            examples = self._get_examples_for_question(question, df)
+            result[question] = examples
 
-            augmented_prompts.append(self._format_prompt(prompt, selected_examples))
+        return result
 
-        return augmented_prompts
+    def _get_examples_for_question(self, question: str, df) -> List[List[str]]:
+        """Get few-shot examples for a specific question"""
+        result = []
+        temp_df = df.copy()
 
-    def _format_prompt(self, question: str, examples: List[str]) -> str:
-        """
-        Format the prompt with the few-shot examples.
+        # Filter out curr question
+        temp_df = temp_df[temp_df["input"] != question]
 
-        Args:
-            question: The original question
-            examples: List of examples to include
+        if len(temp_df) == 0:
+            return [[question, ""]]
 
-        Returns:
-            Formatted prompt with few-shot examples
-        """
-        formatted_examples = "\n\n".join(examples)
-        return f"{formatted_examples}\n\n{question}"
-
-
-#
+        num_examples = min(self.num_examples, len(temp_df))
+        temp_df = temp_df.sample(n=num_examples, random_state=42)
+        # Add examples to the result list
+        for i in range(num_examples):
+            example_input = temp_df.iloc[i]["input"]
+            example_output = temp_df.iloc[i]["output"]
+            result.append([example_input, example_output])
+        # Add the question as the last item
+        # TODO: Check format
+        result.append([question, ""])
+        return result
