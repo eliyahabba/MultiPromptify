@@ -1,15 +1,173 @@
+import json
+from datetime import datetime
+
 import pandas as pd
 import streamlit as st
-import json
-import random
-import re
-import os
-import tempfile
-from datetime import datetime
 
 from src.integration.combinatorial import VariationCombiner
 from src.integration.pipeline import AugmentationPipeline
-from src.utils.constants import VARIATION_DIMENSIONS, DEMO_EXAMPLE, DEMO_DIMENSIONS, DEMO_HIGHLIGHTS
+from src.utils.constants import (
+    VARIATION_DIMENSIONS, DEMO_EXAMPLE, DEMO_DIMENSIONS, DEMO_HIGHLIGHTS,
+    DEFAULT_VARIATIONS_PER_AXIS, MIN_VARIATIONS_PER_AXIS, MAX_VARIATIONS_PER_AXIS
+)
+
+
+class AppPipeline:
+    """
+    Manages the application pipeline flow, connecting the UI with the backend processing.
+    This class coordinates the different stages of the pipeline within the Streamlit app.
+    """
+
+    def __init__(self):
+        """Initialize the application pipeline."""
+        self.pipeline = AugmentationPipeline()
+
+    def process_annotations(self, df, annotations):
+        """Process annotations and apply them to all examples."""
+        return self.pipeline.process_annotations(df, annotations)
+
+    def identify_axes(self, prompt, annotations=None):
+        """
+        Identify variation axes in a prompt.
+        
+        Args:
+            prompt: The input prompt text
+            annotations: Optional pre-existing annotations
+            
+        Returns:
+            Dictionary of identified axes
+        """
+        # Convert annotations to identification data if provided
+        identification_data = None
+        if annotations:
+            identification_data = self._convert_annotations_to_identification_data(
+                annotations.get("dimensions", {}),
+                annotations.get("highlights", [])
+            )
+
+        # Use the pipeline's identifier - FIX: pass only the prompt
+        # return self.pipeline.identifier.identify(prompt, identification_data)
+
+        # If we have identification data from annotations, use it directly
+        if identification_data:
+            return identification_data
+        else:
+            # Otherwise, use the identifier to generate it
+            return self.pipeline.identifier.identify(prompt)
+
+    def generate_variations(self, prompt, identification_data, max_combinations=100):
+        """
+        Generate variations for a prompt based on identified axes.
+        
+        Args:
+            prompt: The input prompt text
+            identification_data: Data about identified variation points
+            max_combinations: Maximum number of combinations to generate
+            
+        Returns:
+            Dictionary of variations by axis
+        """
+        # Use the pipeline to generate variations
+        return self.pipeline.process(prompt, identification_data)
+
+    def combine_variations(self, variations_by_axis, max_combinations=100):
+        """
+        Combine variations from different axes.
+        
+        Args:
+            variations_by_axis: Dictionary mapping axis names to lists of variations
+            max_combinations: Maximum number of combinations to generate
+            
+        Returns:
+            List of combined variations
+        """
+        combiner = VariationCombiner(max_combinations=max_combinations)
+        return combiner.combine(variations_by_axis)
+
+    def process_all(self, prompt, annotations=None, max_combinations=100, variations_per_axis=3):
+        """
+        Process a prompt through the entire pipeline.
+        
+        Args:
+            prompt: The input prompt text
+            annotations: Optional pre-existing annotations
+            max_combinations: Maximum number of combinations to generate
+            variations_per_axis: Number of variations to generate per axis
+            
+        Returns:
+            Dictionary containing results from each stage
+        """
+        results = {
+            "prompt": prompt,
+            "identification_data": None,
+            "variations_by_axis": {},
+            "combined_variations": []
+        }
+
+        # Step 1: Identify axes
+        results["identification_data"] = self.identify_axes(prompt, annotations)
+
+        # Step 2: Generate variations - pass the number of variations per axis
+        # Update the pipeline to use the variations_per_axis parameter
+        self.pipeline.augmenter.n_augments = variations_per_axis
+
+        results["variations_by_axis"] = self.generate_variations(
+            prompt,
+            results["identification_data"],
+            max_combinations
+        )
+
+        # Step 3: Combine variations
+        if results["variations_by_axis"]:
+            results["combined_variations"] = self.combine_variations(
+                results["variations_by_axis"],
+                max_combinations
+            )
+
+        return results
+
+    def process_batch(self, all_annotations, max_combinations=100, variations_per_axis=3):
+        """
+        Process multiple examples based on annotations.
+        
+        Args:
+            all_annotations: List of annotation dictionaries for all examples
+            max_combinations: Maximum number of combinations to generate
+            variations_per_axis: Number of variations to generate per axis
+            
+        Returns:
+            Dictionary mapping example indices to their results
+        """
+        results = {}
+
+        for annotation in all_annotations:
+            prompt = annotation.get("prompt", "")
+            index = annotation.get("index", 0)
+
+            # Process this example
+            example_results = self.process_all(
+                prompt,
+                annotation,
+                max_combinations,
+                variations_per_axis
+            )
+            results[index] = example_results
+
+        return results
+
+    def _convert_annotations_to_identification_data(self, dimensions, highlights):
+        """
+        Convert annotation format to the format expected by the pipeline.
+        
+        This is a helper method to bridge between the UI annotation format
+        and the format expected by the identification/augmentation components.
+        """
+        # This would contain the actual conversion logic
+        # For now, return a simple placeholder
+        return {
+            "dimensions": dimensions,
+            "highlights": highlights
+        }
 
 
 def main():
@@ -25,6 +183,8 @@ def main():
         st.session_state.highlights = []
     if 'variations' not in st.session_state:
         st.session_state.variations = {}
+    if 'max_combinations' not in st.session_state:
+        st.session_state.max_combinations = 100  # ערך ברירת מחדל
     if 'add_highlight_clicked' not in st.session_state:
         st.session_state.add_highlight_clicked = {}
     if 'csv_data' not in st.session_state:
@@ -69,7 +229,7 @@ def main():
 
     with col1:
         input_method = st.radio(
-        "Choose input method:",
+            "Choose input method:",
             ["Text Input", "CSV Upload"]
         )
 
@@ -97,9 +257,9 @@ def main():
         col1, col2 = st.columns([3, 1])
         with col1:
             prompt = st.text_area("Enter your prompt:",
-                                 value=st.session_state.prompt,
-                                 height=200,
-                                 key="prompt_input")
+                                  value=st.session_state.prompt,
+                                  height=200,
+                                  key="prompt_input")
         with col2:
             st.write("")  # Add some space
             st.write("")  # Add more space to align with text area
@@ -187,11 +347,11 @@ def main():
                                 if st.button("Save Annotations", on_click=save_current_annotations_callback):
                                     # Generate JSON data
                                     json_data = generate_json_from_annotations()
-                                    
+
                                     if json_data:
                                         # Convert to JSON string
                                         json_str = json.dumps(json_data, indent=2)
-                                        
+
                                         # Create a download button
                                         st.download_button(
                                             label="Download JSON",
@@ -199,7 +359,7 @@ def main():
                                             file_name=f"prompt_annotations_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                                             mime="application/json"
                                         )
-                                    
+
                                     # The actual saving of current annotations happens in the callback
 
                             with col3:
@@ -332,7 +492,7 @@ def main():
 
             # Create tabs for each selected dimension
             tabs = st.tabs([next((dim['name'] for dim in VARIATION_DIMENSIONS if dim['id'] == dim_id), dim_id)
-                           for dim_id in st.session_state.selected_dimensions])
+                            for dim_id in st.session_state.selected_dimensions])
 
             # Process each tab
             for i, tab in enumerate(tabs):
@@ -382,7 +542,8 @@ def main():
                     )
 
                     # Button to add the highlight with on_click callback
-                    if st.button("Add Highlight", key=f"add_highlight_{dim_id}", on_click=add_highlight_callback, args=(dim_id, dim_info)):
+                    if st.button("Add Highlight", key=f"add_highlight_{dim_id}", on_click=add_highlight_callback,
+                                 args=(dim_id, dim_info)):
                         st.success(f"Added highlight for {dim_info['name']}")
 
                     # Display current highlights for this dimension
@@ -392,7 +553,8 @@ def main():
                         for j, highlight in enumerate(dim_highlights):
                             col1, col2 = st.columns([3, 1])
                             with col1:
-                                st.text_area(f"Highlight {j+1}", highlight['text'], height=80, key=f"highlight_{dim_id}_{j}", disabled=True)
+                                st.text_area(f"Highlight {j + 1}", highlight['text'], height=80,
+                                             key=f"highlight_{dim_id}_{j}", disabled=True)
                             with col2:
                                 # Define remove callback
                                 def remove_highlight(highlight=highlight):
@@ -401,14 +563,29 @@ def main():
                                             st.session_state.highlights.pop(k)
                                             break
 
-                                if st.button("Remove", key=f"remove_{dim_id}_{j}", on_click=remove_highlight, args=(highlight,)):
+                                if st.button("Remove", key=f"remove_{dim_id}_{j}", on_click=remove_highlight,
+                                             args=(highlight,)):
                                     pass  # The actual removal happens in the callback
 
         # Only show processing UI for single text input mode
         if input_method == "Text Input":
             # Processing parameters
             st.header("Processing Parameters")
-            max_combinations = st.slider("Maximum number of combinations:", 1, 500, 100)
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                max_combinations = st.slider("Maximum number of combinations:", 1, 500, 100)
+
+            with col2:
+                variations_per_axis = st.slider(
+                    "Variations per dimension:",
+                    MIN_VARIATIONS_PER_AXIS,
+                    MAX_VARIATIONS_PER_AXIS,
+                    DEFAULT_VARIATIONS_PER_AXIS
+                )
+                # Store in session state
+                st.session_state.variations_per_axis = variations_per_axis
 
     # Process button
     process_button = st.button("Generate Variations")
@@ -419,49 +596,32 @@ def main():
         elif not st.session_state.highlights:
             st.warning("Please highlight at least one variation point in your prompt.")
         else:
+            max_combinations = st.session_state.get('max_combinations', 100)
+
             with st.spinner("Processing..."):
-                        # In a real implementation, we would use the highlights and dimensions
-                        # to generate variations. For now, we'll simulate it with random variations.
+                # Create annotation data from current state
+                annotation = {
+                    "prompt": st.session_state.prompt,
+                    "dimensions": {
+                        dim_id: {"name": next((d['name'] for d in VARIATION_DIMENSIONS if d['id'] == dim_id), dim_id)}
+                        for dim_id in st.session_state.selected_dimensions},
+                    "highlights": st.session_state.highlights
+                }
 
-                        variations_by_axis = {}
+                # Initialize the app pipeline
+                app_pipeline = AppPipeline()
 
-                        for dim_id in st.session_state.selected_dimensions:
-                            # Find highlights for this dimension
-                            dim_highlights = [h for h in st.session_state.highlights if h['dimension'] == dim_id]
+                # Process the prompt through the entire pipeline
+                results = app_pipeline.process_all(
+                    st.session_state.prompt,
+                    annotation,
+                    max_combinations,
+                    st.session_state.get('variations_per_axis', DEFAULT_VARIATIONS_PER_AXIS)
+                )
 
-                            if dim_highlights:
-                                # Get dimension info
-                                dim_info = next((dim for dim in VARIATION_DIMENSIONS if dim['id'] == dim_id), None)
-
-                                if dim_info:
-                                    # Generate variations (simulated)
-                                    variations = []
-                                    # Start with original prompt
-                                    variations.append(st.session_state.prompt)
-
-                                    # Generate 2-4 variations
-                                    for _ in range(random.randint(2, 4)):
-                                        # Create a variation by replacing highlighted text
-                                        var_prompt = st.session_state.prompt
-
-                                        for highlight in dim_highlights:
-                                            # Replace with a random example from the dimension
-                                            replacement = random.choice(dim_info['examples'])
-                                            var_prompt = var_prompt[:highlight['start']] + replacement + var_prompt[highlight['end']:]
-
-                                        variations.append(var_prompt)
-
-                                    variations_by_axis[dim_info['name']] = variations
-
-                        # Store variations in session state
-                        st.session_state.variations = variations_by_axis
-
-                        # Generate combinations
-                        combiner = VariationCombiner(max_combinations=max_combinations)
-                        combined_variations = combiner.combine(variations_by_axis)
-
-                        # Store combined variations
-                        st.session_state.combined_variations = combined_variations
+                # Store results in session state
+                st.session_state.variations = results["variations_by_axis"]
+                st.session_state.combined_variations = results["combined_variations"]
 
             # Display results if available
             if st.session_state.variations:
@@ -472,7 +632,8 @@ def main():
                 for axis_name, variations in st.session_state.variations.items():
                     with st.expander(f"{axis_name} ({len(variations)} variations)"):
                         for i, var in enumerate(variations):
-                            st.text_area(f"Variation {i+1}", var, height=100, key=f"var_{axis_name}_{i}", disabled=True)
+                            st.text_area(f"Variation {i + 1}", var, height=100, key=f"var_{axis_name}_{i}",
+                                         disabled=True)
 
                 # Display combined variations
                 if 'combined_variations' in st.session_state:
@@ -480,8 +641,8 @@ def main():
 
                 # Create a dataframe for easier viewing
                 df = pd.DataFrame({
-                        "Variation #": range(1, len(st.session_state.combined_variations) + 1),
-                        "Text": st.session_state.combined_variations
+                    "Variation #": range(1, len(st.session_state.combined_variations) + 1),
+                    "Text": st.session_state.combined_variations
                 })
 
                 st.dataframe(df)
@@ -513,7 +674,7 @@ def main():
         with tab1:
             # Display a more user-friendly summary of the annotations
             for i, example in enumerate(json_data):
-                with st.expander(f"Example {i+1}: {example['prompt'].split('\\n')[0][:50]}..."):
+                with st.expander(f"Example {i + 1}: {example['prompt'].split('\\n')[0][:50]}..."):
                     st.write("**Prompt:**")
                     st.text(example["prompt"])
 
@@ -521,7 +682,7 @@ def main():
                     for dim_id, dim_data in example["dimensions"].items():
                         st.write(f"- **{dim_data['name']}**: {len(dim_data['highlights'])} highlights")
                         for j, highlight in enumerate(dim_data['highlights']):
-                            st.write(f"  - Highlight {j+1}: \"{highlight['text']}\"")
+                            st.write(f"  - Highlight {j + 1}: \"{highlight['text']}\"")
 
         with tab2:
             # Display the raw JSON
@@ -578,18 +739,142 @@ def main():
                 total_examples = len(st.session_state.csv_data) if st.session_state.csv_data is not None else 0
                 # Count annotated examples
                 annotated_count = len(st.session_state.annotated_examples)
-                
-                st.info(f"""
-                This would process all {total_examples} examples in the CSV using the annotations from {annotated_count} examples as a guide.
-                
-                The system would:
-                1. Use the patterns identified in your annotations
-                2. Automatically detect similar patterns in all examples
-                3. Generate variations for each detected pattern
-                4. Create a comprehensive set of prompt variations
-                
-                This feature is not yet implemented in this demo.
-                """)
+
+                if st.session_state.csv_data is not None and st.session_state.annotated_examples:
+                    with st.spinner("Processing all examples..."):
+                        try:
+                            # Generate JSON data from annotations
+                            annotations = generate_json_from_annotations()
+
+                            # Initialize the app pipeline
+                            app_pipeline = AppPipeline()
+
+                            # Step 1: Process annotations to apply to all examples
+                            all_annotations = app_pipeline.process_annotations(
+                                st.session_state.csv_data,
+                                annotations
+                            )
+
+                            st.success(f"Successfully processed {len(all_annotations)} examples!")
+
+                            # Step 2: Process all examples through the pipeline
+                            max_combinations = 100  # This could be a user input
+                            variations_per_axis = st.session_state.get('variations_per_axis',
+                                                                       DEFAULT_VARIATIONS_PER_AXIS)
+
+                            batch_results = app_pipeline.process_batch(
+                                all_annotations,
+                                max_combinations,
+                                variations_per_axis
+                            )
+
+                            # Store results in session state
+                            st.session_state.batch_results = batch_results
+
+                            # Extract variations for display
+                            variations_results = {}
+                            for idx, result in batch_results.items():
+                                variations_results[idx] = result.get("combined_variations", [])
+
+                            # Display summary of results
+                            total_variations = sum(len(vars) for vars in variations_results.values())
+                            st.success(
+                                f"Generated {total_variations} variations across {len(variations_results)} examples!")
+
+                            # Display detailed results
+                            st.subheader("Variation Results")
+
+                            # Create tabs for different views
+                            tab1, tab2 = st.tabs(["Summary", "Details"])
+
+                            with tab1:
+                                # Create a summary table
+                                summary_data = []
+                                for idx, variations in variations_results.items():
+                                    # Get the prompt for this example
+                                    example_prompt = next((a["prompt"] for a in all_annotations if a["index"] == idx),
+                                                          "")
+                                    # Truncate for display
+                                    short_prompt = example_prompt[:50] + "..." if len(
+                                        example_prompt) > 50 else example_prompt
+
+                                    summary_data.append({
+                                        "Example": idx + 1,
+                                        "Prompt": short_prompt,
+                                        "Variations": len(variations)
+                                    })
+
+                                if summary_data:
+                                    summary_df = pd.DataFrame(summary_data)
+                                    st.dataframe(summary_df)
+
+                            with tab2:
+                                # Allow user to select an example to view in detail
+                                example_indices = list(variations_results.keys())
+                                if example_indices:
+                                    selected_example = st.selectbox(
+                                        "Select an example to view:",
+                                        options=example_indices,
+                                        format_func=lambda i: f"Example {i + 1}"
+                                    )
+
+                                    # Display variations for the selected example
+                                    if selected_example in variations_results:
+                                        example_variations = variations_results[selected_example]
+                                        st.write(
+                                            f"**Example {selected_example + 1} has {len(example_variations)} variations:**")
+
+                                        for i, variation in enumerate(example_variations):
+                                            with st.expander(f"Variation {i + 1}"):
+                                                st.text(variation)
+
+                            # Provide download options
+                            st.subheader("Download Options")
+
+                            # Prepare data for download
+                            all_variations = []
+                            for idx, variations in variations_results.items():
+                                for var in variations:
+                                    all_variations.append({
+                                        "example_id": idx + 1,
+                                        "variation": var
+                                    })
+
+                            if all_variations:
+                                variations_df = pd.DataFrame(all_variations)
+
+                                # CSV download
+                                csv_data = variations_df.to_csv(index=False).encode('utf-8')
+                                st.download_button(
+                                    label="Download All Variations (CSV)",
+                                    data=csv_data,
+                                    file_name="all_variations.csv",
+                                    mime="text/csv"
+                                )
+
+                                # JSON download
+                                json_data = json.dumps(variations_results, indent=2)
+                                st.download_button(
+                                    label="Download All Variations (JSON)",
+                                    data=json_data,
+                                    file_name="all_variations.json",
+                                    mime="application/json"
+                                )
+
+                        except Exception as e:
+                            st.error(f"Error processing examples: {e}")
+                else:
+                    st.info(f"""
+                    This would process all {total_examples} examples in the CSV using the annotations from {annotated_count} examples as a guide.
+                    
+                    The system would:
+                    1. Use the patterns identified in your annotations
+                    2. Automatically detect similar patterns in all examples
+                    3. Generate variations for each detected pattern
+                    4. Create a comprehensive set of prompt variations
+                    
+                    Please upload a CSV and annotate at least one example to use this feature.
+                    """)
 
 
 def save_current_annotations():
@@ -672,10 +957,10 @@ def get_dimension_color(dim_id):
     """Get a color for a dimension."""
     colors = {
         "enumeration": "#FF9999",  # Brighter red
-        "separator": "#99FF99",    # Brighter green
-        "order": "#9999FF",        # Brighter blue
-        "phrasing": "#FFFF99",     # Brighter yellow
-        "examples": "#FF99FF"      # Brighter purple
+        "separator": "#99FF99",  # Brighter green
+        "order": "#9999FF",  # Brighter blue
+        "phrasing": "#FFFF99",  # Brighter yellow
+        "examples": "#FF99FF"  # Brighter purple
     }
     return colors.get(dim_id, "#CCCCCC")  # Default to light gray
 
@@ -696,6 +981,7 @@ def go_to_previous_example():
     # Load annotations for the new example
     load_annotations_for_current_example()
 
+
 def go_to_next_example(num_examples):
     # Save current annotations
     if st.session_state.highlights:
@@ -715,33 +1001,35 @@ def go_to_next_example(num_examples):
         # Finish annotation
         st.session_state.annotation_complete = True
 
+
 def save_current_annotations_callback():
     """Callback for saving annotations with user feedback."""
     # Set the save requested flag
     st.session_state.save_requested = True
-    
+
     # Save the annotations
     save_current_annotations()
-    
+
     # Count how many highlights were saved
     current_index = st.session_state.current_example_index
     highlight_count = 0
-    
+
     # Find the saved example
     for example in st.session_state.annotated_examples:
         if example.get('index') == current_index:
             highlight_count = len(example.get('highlights', []))
             break
-    
+
     # Update the save message with more details
     if highlight_count > 0:
         st.session_state.save_message = f"Saved {highlight_count} highlights for example {current_index + 1}."
     else:
         st.session_state.save_message = "No highlights to save for this example."
-    
+
     # Add information about the JSON download option
     if st.session_state.annotated_examples:
         st.session_state.save_message += " JSON download option is now available."
+
 
 def edit_selected_example(selected_example):
     # Save current annotations if we're in the middle of annotating
@@ -756,6 +1044,7 @@ def edit_selected_example(selected_example):
 
     # If we were in complete state, go back to annotation mode
     st.session_state.annotation_complete = False
+
 
 def return_to_annotation_mode():
     st.session_state.annotation_complete = False

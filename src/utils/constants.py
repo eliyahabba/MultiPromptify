@@ -66,4 +66,11 @@ DEMO_HIGHLIGHTS = [
         "end": 66,
         "text": "Please rate your experience with our service:"
     }
-] 
+]
+
+# Default number of variations to generate per axis
+DEFAULT_VARIATIONS_PER_AXIS = 3
+
+# Minimum and maximum number of variations per axis
+MIN_VARIATIONS_PER_AXIS = 1
+MAX_VARIATIONS_PER_AXIS = 10 
