@@ -1,6 +1,7 @@
 from base_augmenter import BaseAxisAugmenter
 from typing import List
 from together import Together
+import ast
 
 
 model = "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"
@@ -40,16 +41,21 @@ class Paraphrase(BaseAxisAugmenter):
         """
         self.k = k
 
-
-    def augment(self,prompt:str) -> List[str]:
-        pass
-
-
-def trying_func(k=5):
-    def build_rephrasing_prompt(templete: str, k: int, prompt: str) -> str:
+    def build_rephrasing_prompt(self,templete: str, k: int, prompt: str) -> \
+            str:
         return templete.format(k=k, prompt=prompt)
 
-    print(build_rephrasing_prompt(talkative,k,"Given a query word and two other words, determine which of the two words is a homophone of the query word."))
-    prompts =
-if __name__ == '__main__':
-    trying_func(5)
+    def augment(self,prompt:str) -> List[str]:
+        prompt =self.build_rephrasing_prompt(self,self.k,talkative)
+        current_prompt = [
+            {"role": "user", "content": prompt}
+        ]
+        response = client.chat.completions.create(
+            model=model,
+            messages=current_prompt,
+        )
+        return ast.literal_eval(response)
+
+
+# if __name__ == '__main__':
+#     trying_func(5)
