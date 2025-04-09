@@ -35,7 +35,7 @@ class multidoc_augmenter():
         """
         # if example has one doc, no order augmentation is needed
         if len(docs) <= 1:
-            return [tuple(docs)]
+            return [docs]
 
         # generate all permutations of the docs
         n_iterations = min(n_permutations, factorial(len(docs)))
