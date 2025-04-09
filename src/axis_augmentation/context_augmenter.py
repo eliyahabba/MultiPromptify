@@ -1,9 +1,7 @@
 import random
 from typing import List, Dict, Any
-import requests
-import json
-
 from src.axis_augmentation.base_augmenter import BaseAxisAugmenter
+from src.utils.model_client import get_completion
 
 
 class ContextAugmenter(BaseAxisAugmenter):
@@ -12,16 +10,14 @@ class ContextAugmenter(BaseAxisAugmenter):
     This doesn't change the meaning of the task but makes the prompt longer.
     """
 
-    def __init__(self, n_augments=3, api_key=None):
+    def __init__(self, n_augments=3):
         """
         Initialize the context augmenter.
 
         Args:
             n_augments: Number of variations to generate
-            api_key: API key for the language model service (if needed)
         """
         super().__init__(n_augments=n_augments)
-        self.api_key = api_key
         
     def get_name(self):
         return "Context Variations"
@@ -67,7 +63,7 @@ class ContextAugmenter(BaseAxisAugmenter):
         
         # Call language model to generate the variation
         try:
-            result = self._call_language_model(meta_prompt)
+            result = get_completion(meta_prompt)
             # Check if the result is valid (not empty and not the same as the original prompt and the original prompt is in the result)
             if result and result != prompt and prompt in result:
                 return result
@@ -120,31 +116,4 @@ class ContextAugmenter(BaseAxisAugmenter):
             
             Return ONLY the modified prompt with added context before and after it. Do not include any explanations.
             """
-
-    def _call_language_model(self, meta_prompt: str) -> str:
-        """
-        Call a language model API to generate the variation.
-        
-        This is a placeholder - you'll need to implement the actual API call
-        based on which language model service you're using.
-        
-        Args:
-            meta_prompt: The prompt to send to the language model
-            
-        Returns:
-            The generated text
-        """
-        # This is a placeholder implementation
-        # Replace with actual API call to your preferred language model
-        
-        # Example using a hypothetical API:
-        # response = requests.post(
-        #     "https://api.languagemodel.com/generate",
-        #     headers={"Authorization": f"Bearer {self.api_key}"},
-        #     json={"prompt": meta_prompt, "max_tokens": 500}
-        # )
-        # return response.json()["choices"][0]["text"].strip()
-        
-        # For now, return a simple modification to show the concept
-        return meta_prompt  # Replace with actual implementation
 

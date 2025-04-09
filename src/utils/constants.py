@@ -1,5 +1,8 @@
 """Constants for the Multi-Prompt Evaluation Tool."""
 
+# Model configuration
+DEFAULT_MODEL = "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"
+
 # Variation dimensions that can be selected
 VARIATION_DIMENSIONS = [
     {
@@ -73,4 +76,30 @@ DEFAULT_VARIATIONS_PER_AXIS = 3
 
 # Minimum and maximum number of variations per axis
 MIN_VARIATIONS_PER_AXIS = 1
-MAX_VARIATIONS_PER_AXIS = 10 
+MAX_VARIATIONS_PER_AXIS = 10
+
+# Constants for MultipleChoiceAugmenter
+class MultipleChoiceConstants:
+    # Enumeration styles for multiple choice options
+    ENUMERATION_STYLES = [
+        ["A", "B", "C", "D"],  # uppercase letters
+        ["a", "b", "c", "d"],  # lowercase letters
+        ["1", "2", "3", "4"],  # numbers
+        ["A)", "B)", "C)", "D)"],  # uppercase with bracket
+        ["a)", "b)", "c)", "d)"],  # lowercase with bracket
+        ["1)", "2)", "3)", "4)"],  # numbers with bracket
+    ]
+
+# Constants for MultiDocAugmenter
+class MultiDocConstants:
+    # Concatenation types
+    SINGLE_DOC = "single_doc"
+    DOUBLE_NEWLINES = "2_newlines"
+    TITLES = "titles"
+    DASHES = "dashes"
+    
+    # Default separator for dashes
+    DEFAULT_SEPARATOR_LENGTH = 20
+    
+    # Document title format
+    DOC_TITLE_FORMAT = "Document {}: " 

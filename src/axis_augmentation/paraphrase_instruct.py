@@ -1,11 +1,7 @@
-from base_augmenter import BaseAxisAugmenter
+from src.axis_augmentation.base_augmenter import BaseAxisAugmenter
 from typing import List
-from together import Together
+from src.utils.model_client import get_completion
 import ast
-
-
-model = "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"
-client = Together()
 
 
 #moran's gpt3.5 templates, changes to general LLM and {k} times and the
@@ -41,16 +37,9 @@ class Paraphrase(BaseAxisAugmenter):
         return template.format(k=k, prompt=prompt)
 
     def augment(self, prompt:str) -> List[str]:
-        prompt =self.build_rephrasing_prompt(talkative_template, self.k, prompt)
-        current_prompt = [
-            {"role": "user", "content": prompt}
-        ]
-        response = client.chat.completions.create(
-            model=model,
-            messages=current_prompt,
-        )
-
-        return ast.literal_eval(response.choices[0].message.content)
+        prompt = self.build_rephrasing_prompt(talkative_template, self.k, prompt)
+        response = get_completion(prompt)
+        return ast.literal_eval(response)
 
 
 # if __name__ == '__main__':
