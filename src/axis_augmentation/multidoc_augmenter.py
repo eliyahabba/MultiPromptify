@@ -4,6 +4,7 @@ from random import sample
 from typing import List
 
 from datasets import load_dataset
+from src.utils.constants import MultiDocConstants
 
 
 class multidoc_augmenter():
@@ -42,7 +43,7 @@ class multidoc_augmenter():
         augments = sample(list(permutations(docs)), n_iterations)
         return [list(item) for item in augments]
 
-    def concatenate_docs(self, docs: List[str], concat_type: str = "single_doc") -> str:
+    def concatenate_docs(self, docs: List[str], concat_type: str = MultiDocConstants.SINGLE_DOC) -> str:
         """
         Concatenate the documents into a single string.
         :param docs: a list of documents to concatenate
@@ -50,21 +51,21 @@ class multidoc_augmenter():
         or choose "special_<seperator>" where "seperator" is a specific string to use as a separator
         :return: a single string containing all documents concatenated
         """
-        if concat_type == "single_doc":
+        if concat_type == MultiDocConstants.SINGLE_DOC:
             # Add a single newline between documents
             return "\n".join(docs)
 
-        elif concat_type == "2_newlines":
+        elif concat_type == MultiDocConstants.DOUBLE_NEWLINES:
             # Add two newlines between documents
             return "\n\n".join(docs)
 
-        elif concat_type == "titles":
+        elif concat_type == MultiDocConstants.TITLES:
             # Add titles to each document
-            return "\n".join([f"Document {i + 1}:\n{doc}\n" for i, doc in enumerate(docs)])
+            return "\n".join([f"{MultiDocConstants.DOC_TITLE_FORMAT.format(i + 1)}\n{doc}\n" for i, doc in enumerate(docs)])
 
-        elif concat_type == "dashes":
+        elif concat_type == MultiDocConstants.DASHES:
             # Add dashes between documents
-            return "\n".join([f"{doc}\n{'-' * 20}" for i, doc in enumerate(docs)])
+            return "\n".join([f"{doc}\n{'-' * MultiDocConstants.DEFAULT_SEPARATOR_LENGTH}" for i, doc in enumerate(docs)])
 
         elif "special_" in concat_type:
             # Use the specified separator
@@ -73,7 +74,7 @@ class multidoc_augmenter():
 
         else:
             raise ValueError(
-                f"Invalid concat_type: {concat_type}. Choose from: ['single_doc', '2_newlines', 'titles', 'dashes'] or provide a specific string as a separator.")
+                f"Invalid concat_type: {concat_type}. Choose from: ['{MultiDocConstants.SINGLE_DOC}', '{MultiDocConstants.DOUBLE_NEWLINES}', '{MultiDocConstants.TITLES}', '{MultiDocConstants.DASHES}'] or provide a specific string as a separator.")
 
 
 if __name__ == "__main__":  # Example usage

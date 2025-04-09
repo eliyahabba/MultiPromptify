@@ -2,6 +2,7 @@ import random
 from typing import List, Dict, Any
 
 from src.axis_augmentation.base_augmenter import BaseAxisAugmenter
+from src.utils.constants import MultipleChoiceConstants
 
 
 class MultipleChoiceAugmenter(BaseAxisAugmenter):
@@ -18,14 +19,7 @@ class MultipleChoiceAugmenter(BaseAxisAugmenter):
         super().__init__(n_augments=n_augments)
         
         # Define available enumeration styles
-        self.enumeration_styles = [
-            ["A", "B", "C", "D"],  # uppercase letters
-            ["a", "b", "c", "d"],  # lowercase letters
-            ["1", "2", "3", "4"],  # numbers
-            ["A)", "B)", "C)", "D)"],  # uppercase with bracket
-            ["a)", "b)", "c)", "d)"],  # lowercase with bracket
-            ["1)", "2)", "3)", "4)"],  # numbers with bracket
-        ]
+        self.enumeration_styles = MultipleChoiceConstants.ENUMERATION_STYLES
     
     def get_name(self):
         return "Multiple Choice Variations"
