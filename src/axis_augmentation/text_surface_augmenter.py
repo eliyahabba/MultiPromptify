@@ -2,7 +2,6 @@
 import itertools
 import random
 import re
-from typing import List, Dict, Any
 
 from src.axis_augmentation.base_augmenter import BaseAxisAugmenter
 from src.utils.constants import TextSurfaceAugmenterConstants
@@ -23,108 +22,6 @@ class TextSurfaceAugmenter(BaseAxisAugmenter):
         """
         super().__init__(n_augments=n_augments)
 
-    def get_name(self):
-        return "Non-LLM Variations"
-
-    def augment(self, prompt: str, identification_data: Dict[str, Any] = None) -> List[str]:
-        """
-        Generate variations of the prompt using non-LLM techniques.
-
-        Args:
-            prompt: The original prompt text
-            identification_data: Data from the identifier (not used in this augmenter)
-
-        Returns:
-            List of variations with non-LLM transformations
-        """
-        variations = [prompt]  # Start with the original prompt
-
-        # Generate n_augments-1 variations (since we already have the original)
-        for _ in range(self.n_augments - 1):
-            # Randomly choose a transformation technique
-            technique = random.choice(TextSurfaceAugmenterConstants.TRANSFORMATION_TECHNIQUES)
-
-            # Apply the chosen transformation
-            new_variation = self._apply_transformation(prompt, technique)
-            if new_variation and new_variation != prompt:
-                variations.append(new_variation)
-
-        return variations[:self.n_augments]
-
-    def _apply_transformation(self, text: str, technique: str) -> str:
-        """
-        Apply a specific transformation technique to the text.
-
-        Args:
-            text: The original text
-            technique: The transformation technique to apply
-
-        Returns:
-            The transformed text
-        """
-        if technique == "typos":
-            return self._add_typos(text)
-        elif technique == "capitalization":
-            return self._change_capitalization(text)
-        elif technique == "punctuation":
-            return self._modify_punctuation(text)
-        elif technique == "spacing":
-            return self._modify_spacing(text)
-        else:
-            return text
-
-    def _add_typos(self, text: str) -> str:
-        """
-        Add random typos to the text using the butter_finger method.
-
-        Args:
-            text: The original text
-
-        Returns:
-            Text with typos
-        """
-        result = self.butter_finger(text, prob=TextSurfaceAugmenterConstants.DEFAULT_TYPO_PROB, max_outputs=1)
-        return result[0] if result else text
-
-    def _change_capitalization(self, text: str) -> str:
-        """
-        Change the capitalization of some characters in the text.
-
-        Args:
-            text: The original text
-
-        Returns:
-            Text with modified capitalization
-        """
-        result = self.change_char_case(text, prob=TextSurfaceAugmenterConstants.DEFAULT_CASE_CHANGE_PROB, max_outputs=1)
-        return result[0] if result else text
-
-    def _modify_punctuation(self, text: str) -> str:
-        """
-        Modify punctuation in the text.
-
-        Args:
-            text: The original text
-
-        Returns:
-            Text with modified punctuation
-        """
-        # Simple implementation: replace periods with exclamation marks
-        return text.replace('.', '!', 1) if '.' in text else text
-
-    def _modify_spacing(self, text: str) -> str:
-        """
-        Modify spacing in the text using the add_white_spaces method.
-
-        Args:
-            text: The original text
-
-        Returns:
-            Text with modified spacing
-        """
-        result = self.add_white_spaces([text], max_outputs=1)
-        return result[0][0] if result and result[0] else text
-
     def _add_white_spaces_to_single_text(self, value):
         """
         Add white spaces to the input text.
@@ -140,23 +37,37 @@ class TextSurfaceAugmenter(BaseAxisAugmenter):
 
         for word in words:
             if word.isspace():
-                for j in range(random.randint(1, 3)):
-                    new_value += TextSurfaceAugmenterConstants.WHITE_SPACE_OPTIONS[random.randint(0, 2)]
+                for j in range(random.randint(
+                        TextSurfaceAugmenterConstants.MIN_WHITESPACE_COUNT,
+                        TextSurfaceAugmenterConstants.MAX_WHITESPACE_COUNT)):
+                    new_value += TextSurfaceAugmenterConstants.WHITE_SPACE_OPTIONS[random.randint(
+                        TextSurfaceAugmenterConstants.MIN_WHITESPACE_INDEX,
+                        TextSurfaceAugmenterConstants.MAX_WHITESPACE_INDEX)]
             else:
                 new_value += word
         return new_value
 
     def add_white_spaces(self, inputs, max_outputs=TextSurfaceAugmenterConstants.DEFAULT_MAX_OUTPUTS):
         """
-        Add white spaces to a list of input texts.
+        Add white spaces to input text(s).
 
         Args:
-            inputs: List of input texts to augment.
+            inputs: Either a single text string or a list of input texts to augment.
             max_outputs: Maximum number of augmented outputs per input.
 
         Returns:
-            List of lists of augmented texts.
+            If inputs is a string: List of augmented texts.
+            If inputs is a list: List of lists of augmented texts.
         """
+        # Handle single text input
+        if isinstance(inputs, str):
+            augmented_input = []
+            for i in range(max_outputs):
+                augmented_text = self._add_white_spaces_to_single_text(inputs)
+                augmented_input.append(augmented_text)
+            return augmented_input
+
+        # Handle list of texts
         augmented_texts = []
         for input_text in inputs:
             augmented_input = []
@@ -242,16 +153,11 @@ class TextSurfaceAugmenter(BaseAxisAugmenter):
 if __name__ == "__main__":
     # Example usage
     augmenter = TextSurfaceAugmenter(n_augments=3)
-    original_prompt = "Please describe the process of photosynthesis in plants."
-    variations = augmenter.augment(original_prompt)
 
-    print(f"Original prompt: {original_prompt}")
-    print("\nNon-LLM variations:")
-    for i, variation in enumerate(variations):
-        print(f"{i + 1}. {variation}")
-    
-    # Example usage of add_white_spaces
-    inputs = ["This is a test sentence.", "Another example for augmentation."]
+    # Sample text for augmentation
+    inputs = ["The quick brown fox jumps over the lazy dog.", "The rain in Spain stays mainly in the plain."]
+
+    # Example usage
     augmented_texts = augmenter.add_white_spaces(inputs)
     print("Augmented Text:", augmented_texts)
 
