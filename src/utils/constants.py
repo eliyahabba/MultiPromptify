@@ -102,4 +102,16 @@ class MultiDocConstants:
     DEFAULT_SEPARATOR_LENGTH = 20
     
     # Document title format
-    DOC_TITLE_FORMAT = "Document {}: " 
+    DOC_TITLE_FORMAT = "Document {}: "
+
+# Constants for FewShotAugmenter
+class FewShotConstants:
+    # Format strings for examples
+    EXAMPLE_FORMAT = "Input: {}\nOutput: {}"
+    QUESTION_FORMAT = "Input: {}\nOutput:"
+    
+    # Separator between examples
+    EXAMPLE_SEPARATOR = "\n\n"
+    
+    # Default random seed for sampling
+    DEFAULT_RANDOM_SEED = 42 

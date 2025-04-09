@@ -3,7 +3,8 @@ from typing import Dict, List
 import pandas as pd
 from datasets import load_dataset
 
-from base_augmenter import BaseAxisAugmenter
+from src.axis_augmentation.base_augmenter import BaseAxisAugmenter
+from src.utils.constants import FewShotConstants
 
 
 class FewShotAugmenter(BaseAxisAugmenter):
@@ -53,19 +54,19 @@ class FewShotAugmenter(BaseAxisAugmenter):
         temp_df = temp_df[temp_df["input"] != question]
 
         if len(temp_df) == 0:
-            return [f"Input: {question}\nOutput:"]
+            return [FewShotConstants.QUESTION_FORMAT.format(question)]
 
         num_examples = min(self.num_examples, len(temp_df))
-        temp_df = temp_df.sample(n=num_examples, random_state=42)
+        temp_df = temp_df.sample(n=num_examples, random_state=FewShotConstants.DEFAULT_RANDOM_SEED)
 
         # Add examples to the result list as formatted strings
         for i in range(num_examples):
             example_input = temp_df.iloc[i]["input"]
             example_output = temp_df.iloc[i]["output"]
-            result.append(f"Input: {example_input}\nOutput: {example_output}")
+            result.append(FewShotConstants.EXAMPLE_FORMAT.format(example_input, example_output))
 
         # Add the question as the last item
-        result.append(f"Input: {question}\nOutput:")
+        result.append(FewShotConstants.QUESTION_FORMAT.format(question))
 
         return result
 
@@ -75,7 +76,7 @@ class FewShotAugmenter(BaseAxisAugmenter):
         :param examples: list of formatted example strings
         :return: formatted string of examples
         """
-        return "\n\n".join(examples)
+        return FewShotConstants.EXAMPLE_SEPARATOR.join(examples)
 
 
 if __name__ == "__main__":
