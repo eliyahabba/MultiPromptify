@@ -97,7 +97,7 @@ class MultipleChoiceAugmenter(BaseAxisAugmenter):
 def main():
     """Example usage of MultipleChoiceAugmenter."""
     # Create the augmenter
-    augmenter = MultipleChoiceAugmenter(n_augments=5)
+    augmenter = MultipleChoiceAugmenter(n_augments=15)
     
     # Example 1: Simple multiple choice question
     example1 = {
