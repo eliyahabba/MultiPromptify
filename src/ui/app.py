@@ -183,9 +183,8 @@ def main():
                                     st.button("Previous Example", on_click=go_to_previous_example)
 
                             with col2:
-                                # Add a button to save the current annotations without navigating
-                                # Add a button to save all annotations to a JSON file
-                                if st.button("Save All to JSON"):
+                                # Replace the two separate buttons with a single save button
+                                if st.button("Save Annotations", on_click=save_current_annotations_callback):
                                     # Generate JSON data
                                     json_data = generate_json_from_annotations()
                                     
@@ -200,8 +199,8 @@ def main():
                                             file_name=f"prompt_annotations_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                                             mime="application/json"
                                         )
-                                    else:
-                                        st.warning("No annotations to save.")
+                                    
+                                    # The actual saving of current annotations happens in the callback
 
                             with col3:
                                 next_button_label = "Next Example" if current_index < num_examples - 1 else "Finish Annotation"
@@ -739,6 +738,10 @@ def save_current_annotations_callback():
         st.session_state.save_message = f"Saved {highlight_count} highlights for example {current_index + 1}."
     else:
         st.session_state.save_message = "No highlights to save for this example."
+    
+    # Add information about the JSON download option
+    if st.session_state.annotated_examples:
+        st.session_state.save_message += " JSON download option is now available."
 
 def edit_selected_example(selected_example):
     # Save current annotations if we're in the middle of annotating
