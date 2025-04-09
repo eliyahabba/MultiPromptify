@@ -9,16 +9,16 @@ class BaseAxisAugmenter:
     without changing the meaning of the prompt.
     """
 
-    def __init__(self):
+    def __init__(self, n_augments):
         """
         Initialize the augmenter with a name.
         
         Args:
             name: A descriptive name for this augmenter
         """
-        pass
+        self.n_augments = n_augments
 
-    def augment(self, prompt: str, identification_data: List[str]) -> List[str]:
+    def augment(self, prompt: str) -> List[str]:
         """
         Generate variations of the prompt based on identification data.
         
