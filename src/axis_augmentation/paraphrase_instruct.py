@@ -54,8 +54,11 @@ class Paraphrase(BaseAxisAugmenter):
             model=model,
             messages=current_prompt,
         )
-        return ast.literal_eval(response)
+
+        return ast.literal_eval(response.choices[0].message.content)
 
 
-if __name__ == '__main__':
-
+# if __name__ == '__main__':
+#     para = Paraphrase(10)
+#     print(para.augment("Describe a historical figure you admire"))
+#
