@@ -86,34 +86,63 @@ class ContextAugmenter(BaseAxisAugmenter):
         if variation_type == "before":
             return f"""
             Your task is to add irrelevant context BEFORE the following prompt.
+            IMPORTANT: The added context must NOT contain any hint or answer to the original prompt.
             The added context should NOT change the meaning or expected answer of the original prompt.
             The context should be coherent but not directly related to the task.
-            
+
             Original prompt:
             "{prompt}"
-            
+
             Return ONLY the modified prompt with added context before it. Do not include any explanations.
             """
         elif variation_type == "after":
             return f"""
             Your task is to add irrelevant context AFTER the following prompt.
+            IMPORTANT: The added context must NOT contain any hint or answer to the original prompt.
             The added context should NOT change the meaning or expected answer of the original prompt.
             The context should be coherent but not directly related to the task.
-            
+
             Original prompt:
             "{prompt}"
-            
+
             Return ONLY the modified prompt with added context after it. Do not include any explanations.
             """
         else:  # both
             return f"""
             Your task is to add irrelevant context BOTH BEFORE AND AFTER the following prompt.
+            IMPORTANT: The added context must NOT contain any hint or answer to the original prompt.
             The added context should NOT change the meaning or expected answer of the original prompt.
             The context should be coherent but not directly related to the task.
-            
+
             Original prompt:
             "{prompt}"
-            
+
             Return ONLY the modified prompt with added context before and after it. Do not include any explanations.
             """
+
+if __name__ == "__main__":
+    # Create the augmenter
+    augmenter = ContextAugmenter(n_augments=3)
+    
+    # Example 1: Simple question
+    prompt1 = "What is the capital of France?"
+    variations1 = augmenter.augment(prompt1)
+    
+    print(f"Original prompt: {prompt1}")
+    print(f"\nGenerated {len(variations1)} variations:")
+    for i, variation in enumerate(variations1):
+        print(f"\nVariation {i+1}:")
+        print(variation)
+        print("-" * 50)
+    
+    # # Example 2: More complex prompt
+    # prompt2 = "Explain the process of photosynthesis in plants."
+    # variations2 = augmenter.augment(prompt2)
+    #
+    # print(f"\nOriginal prompt: {prompt2}")
+    # print(f"\nGenerated {len(variations2)} variations:")
+    # for i, variation in enumerate(variations2):
+    #     print(f"\nVariation {i+1}:")
+    #     print(variation)
+    #     print("-" * 50)
 
