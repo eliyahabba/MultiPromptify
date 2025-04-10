@@ -57,13 +57,20 @@ class FewShotAugmenter(BaseAxisAugmenter):
         if dataset is None:
             return [prompt]
         
-        # Create variations with different examples
         variations = []
-        for _ in range(self.n_augments):
+        used_variations = set()
+        attempts = 0
+        # We'll allow more attempts than n_augments, in case we get duplicates
+        while len(variations) < self.n_augments and attempts < self.n_augments * 2:
             # Get random examples for this variation
-            examples = self._get_examples_for_question(prompt, dataset)
+            # We pass None for random_state so each sample can differ
+            examples = self._get_examples_for_question(prompt, dataset, random_state=None)
             formatted = self.format_examples(examples)
-            variations.append(formatted)
+            # Only add if it's new
+            if formatted not in used_variations:
+                variations.append(formatted)
+                used_variations.add(formatted)
+            attempts += 1
         
         return variations[:self.n_augments]
 
@@ -91,37 +98,32 @@ class FewShotAugmenter(BaseAxisAugmenter):
 
         return result
 
-    def _get_examples_for_question(self, question: str, df) -> List[str]:
+    def _get_examples_for_question(self, question: str, df, random_state=None) -> List[str]:
         """
-        Get few-shot examples for a specific question.
-        
-        Args:
-            question: the input question to find examples for
-            df: DataFrame containing all examples
-            
-        Returns:
-            a list of formatted example strings
+        Get few-shot examples for a specific question, but now skipping the question itself.
         """
         result = []
         temp_df = df.copy()
 
-        # Filter out current question
+        # Filter out the current question
         temp_df = temp_df[temp_df["input"] != question]
 
         if len(temp_df) == 0:
-            return [FewShotConstants.QUESTION_FORMAT.format(question)]
+            return []
 
+        # Only change the sampling logic:
         num_examples = min(self.num_examples, len(temp_df))
-        temp_df = temp_df.sample(n=num_examples, random_state=FewShotConstants.DEFAULT_RANDOM_SEED)
+        temp_df = temp_df.sample(
+            n=num_examples,
+            random_state=random_state,
+            replace=False  # ensure no sampling with replacement
+        )
 
-        # Add examples to the result list as formatted strings
+        # Use these examples as before
         for i in range(num_examples):
             example_input = temp_df.iloc[i]["input"]
             example_output = temp_df.iloc[i]["output"]
             result.append(FewShotConstants.EXAMPLE_FORMAT.format(example_input, example_output))
-
-        # Add the question as the last item
-        result.append(FewShotConstants.QUESTION_FORMAT.format(question))
 
         return result
 
@@ -232,6 +234,39 @@ if __name__ == "__main__":
     print(f"\nOriginal question: {test_question}")
     print(f"\nGenerated {len(variations)} variations:")
     for i, variation in enumerate(variations):
+        print(f"\nVariation {i+1}:")
+        print(variation)
+    
+    # Test augment with identification_data
+    print("\n\nTesting augment with identification_data:")
+    # Create a new augmenter without setting dataset
+    id_augmenter = FewShotAugmenter(num_examples=2, n_augments=2)
+    
+    # Create identification_data with dataset
+    identification_data = {
+        "dataset": pd.DataFrame({
+            "input": [
+                "What is the deepest ocean?",
+                "Who discovered electricity?",
+                "What is the smallest planet?",
+                "What is the capital of Japan?"
+            ],
+            "output": [
+                "Pacific Ocean (Mariana Trench)",
+                "Benjamin Franklin",
+                "Mercury",
+                "Tokyo"
+            ]
+        })
+    }
+    
+    # Test augment with identification_data
+    test_q = "What is the speed of sound?"
+    id_variations = id_augmenter.augment(test_q, identification_data)
+    
+    print(f"Original question: {test_q}")
+    print(f"Generated {len(id_variations)} variations using identification_data:")
+    for i, variation in enumerate(id_variations):
         print(f"\nVariation {i+1}:")
         print(variation)
     

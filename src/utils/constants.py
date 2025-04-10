@@ -173,3 +173,4 @@ class TextSurfaceAugmenterConstants:
     
     # Transformation techniques
     TRANSFORMATION_TECHNIQUES = ["typos", "capitalization", "punctuation", "spacing"]
+
