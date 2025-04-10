@@ -23,6 +23,16 @@
           "How many few-shot examples"
         ]
       }
-    }
+    },
+    "costume_dimensions": [
+      {
+        "id": "abb",
+        "name": "abb",
+        "description": "abbrevations",
+        "examples": [
+          "a -> b"
+        ]
+      }
+    ]
   }
 ]
