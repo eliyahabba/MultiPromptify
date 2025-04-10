@@ -3,6 +3,7 @@ A simplified script that applies augmentation based on dimensions in annotations
 """
 import json
 import random
+from pathlib import Path
 from typing import Dict, List, Any
 import re
 
@@ -197,12 +198,9 @@ def process_annotations(annotations: List[Dict[str, Any]]) -> List[Dict[str, Any
     return all_results
 
 
-def main():
+def main(input_file: str, output_file: str):
     """Main function to run the annotation augmentation process."""
     # Set input and output paths
-    input_file = "/Users/ehabba/PycharmProjects/MultiPromptify/src/axis_augmentation/final_annotations.json"
-    output_file = "augmented_variations.json"
-    
     print(f"Loading annotations from {input_file}...")
     annotations = load_annotations(input_file)
     print(f"Loaded {len(annotations)} annotations.")
@@ -218,4 +216,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    from pathlib import Path
+    
+    input_file = Path(__file__).parent / ".." / "ui" / "final_annotations.json"
+    output_file = "augmented_variations.json"
+
+    main(str(input_file.resolve()), output_file)
