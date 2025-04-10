@@ -3,6 +3,7 @@ import time
 import streamlit as st
 import json
 from src.decompose_tasks import instruction_breakdown
+from src.utils.constants import DEFAULT_MODEL
 import os
 
 def render():
@@ -17,7 +18,7 @@ def render():
         api_key = st.text_input(f"{platform} API Key", type="password", key="api_key")
 
         st.subheader("📦 Model Name")
-        model_name = st.text_input("Model Name", key="model_name", default="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free")
+        model_name = st.text_input("Model Name", key="model_name", default=DEFAULT_MODEL)
 
         st.subheader("📁 Output Directory")
         output_dir = st.text_input("Output Directory", key="output_dir", default="tmp/")
