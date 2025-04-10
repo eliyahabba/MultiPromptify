@@ -22,37 +22,64 @@ load_dotenv()
 
 def load_annotation_examples(file_path: str) -> List[Dict[str, Any]]:
     """
-    Load examples from a JSON file with a structure like:
-    [ { "prompt": "input text", "dimensions": { "key1": {...}, "key2": {...} } }, ... ]
+    Load examples from a JSON file with either of these structures:
+    1. [ { "prompt": "input text", "dimensions": { "key1": {...}, "key2": {...} } }, ... ]
+    2. [ { "full_prompt": "...", "placeholder_prompt": "...", "annotations": { "key1": {...}, ... } }, ... ]
 
     Args:
         file_path: Path to the JSON file containing prompts and dimensions
 
     Returns:
-        List of example dictionaries.
+        List of example dictionaries in a standardized format.
     """
     try:
-        with open(file_path, 'r', encoding='utf-8') as f: # Added encoding
+        with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
         if not isinstance(data, list):
             raise ValueError(f"Annotation file '{file_path}' should contain a JSON list.")
 
         examples = []
-        required_keys = {"prompt", "dimensions"}
 
         for i, item in enumerate(data):
             if not isinstance(item, dict):
                 print(f"Warning: Skipping item {i} in annotation file, not a dictionary.")
                 continue
-            if not required_keys.issubset(item.keys()):
-                print(f"Warning: Skipping item {i}, missing required keys ('prompt', 'dimensions'). Found: {list(item.keys())}")
+                
+            # Check which format we're dealing with
+            if "prompt" in item and "dimensions" in item:
+                # Format 1: Original email_annotation.json format
+                if not isinstance(item["dimensions"], dict):
+                    print(f"Warning: Skipping item {i}, 'dimensions' is not a dictionary.")
+                    continue
+                examples.append(item)
+                
+            elif "full_prompt" in item and "annotations" in item:
+                # Format 2: final_annotations.json format
+                # Convert to the standard format expected by the rest of the code
+                converted_item = {
+                    "prompt": item["full_prompt"],
+                    "dimensions": {}
+                }
+                
+                # Convert annotations to dimensions format
+                for key, annotation in item["annotations"].items():
+                    if "text" in annotation:
+                        # Create a dimension entry with the annotation text as a highlight
+                        converted_item["dimensions"][key] = {
+                            "name": key.replace("_", " ").title(),  # Convert snake_case to Title Case
+                            "highlights": [
+                                {
+                                    "text": annotation["text"]
+                                    # No start/end positions
+                                }
+                            ]
+                        }
+                
+                examples.append(converted_item)
+            else:
+                print(f"Warning: Skipping item {i}, missing required keys. Found: {list(item.keys())}")
                 continue
-            if not isinstance(item["dimensions"], dict):
-                print(f"Warning: Skipping item {i}, 'dimensions' is not a dictionary.")
-                continue
-
-            examples.append(item)
 
         print(f"Successfully loaded {len(examples)} examples from {file_path}")
         if not examples:
@@ -116,16 +143,18 @@ def create_decomposition_prompt(examples: List[Dict[str, Any]]) -> str:
 
     return prompt
 
-# --- LLM Interaction (Unchanged, but added type hints) ---
+# --- LLM Interaction ---
 
-def get_completion(prompt_template: str, input_text: str, model_id: str = "meta-llama/llama-3-3-70b-instruct") -> str:
+def get_completion(prompt_template: str, input_text: str, model_id: str = "meta-llama/llama-3-3-70b-instruct", 
+                  provider: str = "together") -> str:
     """
-    Get completion using LangChain with RITS endpoints.
+    Get completion using either Together API or RITS endpoints.
 
     Args:
         prompt_template: The few-shot prompt template (expects '{input_text}')
         input_text: The specific text to process
         model_id: The model identifier (default is meta-llama/llama-3-3-70b-instruct)
+        provider: The API provider to use ('together' or 'rits')
 
     Returns:
         The generated breakdown string.
@@ -136,46 +165,59 @@ def get_completion(prompt_template: str, input_text: str, model_id: str = "meta-
             input_text = str(input_text)
 
         formatted_prompt = prompt_template.format(input_text=input_text)
-
+        
         # System prompt + user content
         system_content = "You are an AI assistant skilled at analyzing text and breaking it down into predefined components based on examples. Follow the format of the examples precisely."
 
-        # Configure for RITS (IBM)
-        rits_host = os.getenv("RITS_HOST")
-        rits_api_key = os.getenv("RITS_API_KEY")
+        if provider.lower() == "together":
+            # Use Together API
+            from src.utils.model_client import get_model_response
+            
+            messages = [
+                {"role": "system", "content": system_content},
+                {"role": "user", "content": formatted_prompt}
+            ]
+            
+            return get_model_response(messages, model_id)
+            
+        elif provider.lower() == "rits":
+            # Configure for RITS (IBM)
+            rits_host = os.getenv("RITS_HOST")
+            rits_api_key = os.getenv("RITS_API_KEY")
 
-        if not rits_host or not rits_api_key:
-            raise ValueError("RITS_HOST and RITS_API_KEY environment variables must be set")
+            if not rits_host or not rits_api_key:
+                raise ValueError("RITS_HOST and RITS_API_KEY environment variables must be set")
 
-        # Extract just the model name (e.g., "llama-3-3-70b-instruct")
-        model_name = model_id.split('/')[-1]
-        # Use the correct URL format directly with the model name
-        rits_base_url = f'{rits_host}/{model_name}/v1'
-        
-        print(f"Using RITS URL: {rits_base_url}")
-        print(f"Using RITS Model ID: {model_id}")
+            # Extract just the model name (e.g., "llama-3-3-70b-instruct")
+            model_name = model_id.split('/')[-1]
+            # Use the correct URL format directly with the model name
+            rits_base_url = f'{rits_host}/{model_name}/v1'
+            
+            print(f"Using RITS URL: {rits_base_url}")
+            print(f"Using RITS Model ID: {model_id}")
 
-        llm = ChatOpenAI(
-            model=model_id,
-            api_key='/',  # RITS uses header auth
-            base_url=rits_base_url,
-            default_headers={'RITS_API_KEY': rits_api_key},
-            max_retries=2,
-            temperature=0.7,
-            max_tokens=1500
-        )
+            llm = ChatOpenAI(
+                model=model_id,
+                api_key='/',  # RITS uses header auth
+                base_url=rits_base_url,
+                default_headers={'RITS_API_KEY': rits_api_key},
+                max_retries=2,
+                temperature=0.7,
+                max_tokens=1500
+            )
 
-        # Use LangChain's invoke method with SystemMessage and HumanMessage
-        from langchain.schema import SystemMessage, HumanMessage
-        
-        messages = [
-            SystemMessage(content=system_content),
-            HumanMessage(content=formatted_prompt)
-        ]
-        
-        response = llm.invoke(messages)
-
-        return response.content.strip()
+            # Use LangChain's invoke method with SystemMessage and HumanMessage
+            from langchain.schema import SystemMessage, HumanMessage
+            
+            messages = [
+                SystemMessage(content=system_content),
+                HumanMessage(content=formatted_prompt)
+            ]
+            
+            response = llm.invoke(messages)
+            return response.content.strip()
+        else:
+            raise ValueError(f"Unknown provider: {provider}. Must be 'together' or 'rits'.")
 
     except Exception as e:
         print(f"Error getting completion for input starting with '{input_text[:50]}...': {e}")
@@ -243,7 +285,8 @@ def process_dataframe_with_structure(
     annotation_examples: List[Dict[str, Any]],
     input_column: str,
     model_id: str = "meta-llama/llama-3-3-70b-instruct",
-    delay_seconds: float = 0.5 # Added delay parameter
+    delay_seconds: float = 0.5, # Added delay parameter
+    provider: str = "together" # Added provider parameter
 ) -> pd.DataFrame:
     """
     Processes a dataframe by applying LLM-based decomposition to an input column.
@@ -255,6 +298,7 @@ def process_dataframe_with_structure(
         input_column: Column containing text to analyze.
         model_id: The model identifier.
         delay_seconds: Delay between API calls to avoid rate limiting.
+        provider: The API provider to use ('together' or 'rits')
 
     Returns:
         Dataframe with added breakdown, dimensions_json, and individual dimension columns.
@@ -283,7 +327,7 @@ def process_dataframe_with_structure(
             structured_dimensions = {}
         else:
             input_text_str = str(input_text)
-            raw_text_breakdown = get_completion(prompt_template, input_text_str, model_id)
+            raw_text_breakdown = get_completion(prompt_template, input_text_str, model_id, provider)
             _, structured_dimensions = parse_llm_breakdown(raw_text_breakdown)
 
         raw_breakdowns.append(raw_text_breakdown)
@@ -315,7 +359,7 @@ def process_dataframe_with_structure(
 
 def main(annotation_file: str, input_csv: str, output_csv: str,
          input_column: str, model_id: str = "meta-llama/llama-3-3-70b-instruct",
-         delay: float = 0.5):
+         delay: float = 0.5, provider: str = "together"):
     """
     Main function to load data, process it for structured decomposition, and save results.
 
@@ -326,6 +370,7 @@ def main(annotation_file: str, input_csv: str, output_csv: str,
         input_column: Column in input_csv containing text to analyze.
         model_id: The model identifier (e.g., 'meta-llama/llama-3-3-70b-instruct', 'ibm/granite-13b-instruct-v2').
         delay: Delay in seconds between LLM calls.
+        provider: The API provider to use ('together' or 'rits')
     """
     print("--- Starting Task Decomposition Script ---")
     print(f"Annotation File: {annotation_file}")
@@ -333,6 +378,7 @@ def main(annotation_file: str, input_csv: str, output_csv: str,
     print(f"Output CSV: {output_csv}")
     print(f"Input Column: {input_column}")
     print(f"Model ID: {model_id}")
+    print(f"API Provider: {provider}")
     print(f"API Call Delay: {delay} seconds")
 
     # Check file existence
@@ -344,15 +390,25 @@ def main(annotation_file: str, input_csv: str, output_csv: str,
         return
 
     # Check if required configuration is present
-    rits_host = os.getenv("RITS_HOST")
-    rits_api_key = os.getenv("RITS_API_KEY")
-    if not rits_host or not rits_api_key:
-        print("Error: RITS_HOST and RITS_API_KEY environment variables must be set.")
-        print("Please create a .env file or set them in your environment.")
-        return  # Stop execution if config is missing
-
-    print(f"Using RITS Host: {rits_host}")
-    print(f"Using RITS Model ID: {model_id}")
+    if provider.lower() == "together":
+        together_api_key = os.getenv("TOGETHER_API_KEY")
+        if not together_api_key:
+            print("Error: TOGETHER_API_KEY environment variable must be set.")
+            print("Please create a .env file or set it in your environment.")
+            return  # Stop execution if config is missing
+        print(f"Using Together API with model: {model_id}")
+    elif provider.lower() == "rits":
+        rits_host = os.getenv("RITS_HOST")
+        rits_api_key = os.getenv("RITS_API_KEY")
+        if not rits_host or not rits_api_key:
+            print("Error: RITS_HOST and RITS_API_KEY environment variables must be set.")
+            print("Please create a .env file or set them in your environment.")
+            return  # Stop execution if config is missing
+        print(f"Using RITS Host: {rits_host}")
+        print(f"Using RITS Model ID: {model_id}")
+    else:
+        print(f"Error: Unknown provider '{provider}'. Must be 'together' or 'rits'.")
+        return
 
     try:
         # 1. Load Annotation Examples
@@ -388,7 +444,8 @@ def main(annotation_file: str, input_csv: str, output_csv: str,
             annotation_examples=annotation_examples,
             input_column=target_input_column,
             model_id=model_id,
-            delay_seconds=delay
+            delay_seconds=delay,
+            provider=provider
         )
 
         # 4. Save Results
@@ -428,19 +485,28 @@ if __name__ == "__main__":
                         help="Model identifier for the LLM (default: 'meta-llama/llama-3-3-70b-instruct'). Examples: 'ibm/granite-13b-instruct-v2'.")
     parser.add_argument("--delay", type=float, default=0.5,
                         help="Delay in seconds between LLM API calls (default: 0.5). Set to 0 to disable.")
+    parser.add_argument("--provider", type=str, default="together", choices=["together", "rits"],
+                        help="API provider to use (default: 'together'). Options: 'together', 'rits'.")
 
     args = parser.parse_args()
 
     # Set API keys from environment variables (ensure .env file is present or vars are set)
     load_dotenv()
     
-    # Check if required configuration is present
-    rits_host = os.getenv("RITS_HOST")
-    rits_api_key = os.getenv("RITS_API_KEY")
-    if not rits_host or not rits_api_key:
-        print("Error: RITS_HOST and RITS_API_KEY environment variables must be set.")
-        print("Please create a .env file or set them in your environment.")
-        exit()  # Stop execution if config is missing
+    # Check if required configuration is present based on provider
+    if args.provider.lower() == "together":
+        together_api_key = os.getenv("TOGETHER_API_KEY")
+        if not together_api_key:
+            print("Error: TOGETHER_API_KEY environment variable must be set.")
+            print("Please create a .env file or set it in your environment.")
+            exit()  # Stop execution if config is missing
+    elif args.provider.lower() == "rits":
+        rits_host = os.getenv("RITS_HOST")
+        rits_api_key = os.getenv("RITS_API_KEY")
+        if not rits_host or not rits_api_key:
+            print("Error: RITS_HOST and RITS_API_KEY environment variables must be set.")
+            print("Please create a .env file or set them in your environment.")
+            exit()  # Stop execution if config is missing
 
     main(
         annotation_file=args.annotation,
@@ -448,5 +514,6 @@ if __name__ == "__main__":
         output_csv=args.output,
         input_column=args.column,
         model_id=args.model,
-        delay=args.delay
+        delay=args.delay,
+        provider=args.provider
     ) 
