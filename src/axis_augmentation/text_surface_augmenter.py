@@ -153,29 +153,29 @@ class TextSurfaceAugmenter(BaseAxisAugmenter):
     def augment(self, text: str, techniques: List[str] = None) -> List[str]:
         """
         Apply text surface transformations to generate variations.
-        
+
         Args:
             text: The text to augment
             techniques: List of techniques to apply in sequence. If None, a default sequence will be used.
                 Options: "typos", "capitalization", "spacing"
-        
+
         Returns:
             List of augmented texts including the original text
         """
         # Default sequence if none provided
         if techniques is None:
             techniques = ["typos", "capitalization", "spacing"]
-        
+
         # Start with the original text
         variations = [text]
-        
+
         # Apply each technique in sequence
         for technique in techniques:
             new_variations = []
-            
+
             # Always keep the original variations
             new_variations.extend(variations)
-            
+
             # For each existing variation, apply the current technique
             for variation in variations:
                 if technique == "typos":
@@ -190,20 +190,20 @@ class TextSurfaceAugmenter(BaseAxisAugmenter):
                     # Add spacing variations
                     spacing_results = self.add_white_spaces(variation, max_outputs=2)
                     new_variations.extend(spacing_results)
-            
+
             # Update variations for the next technique
             variations = new_variations
-            
+
             # If we already have enough variations, we can stop
             if len(variations) >= self.n_augments:
                 break
-        
+
         # Remove duplicates while preserving order
         unique_variations = []
         for var in variations:
             if var not in unique_variations:
                 unique_variations.append(var)
-        
+
         # Ensure we return the requested number of variations
         if len(unique_variations) > self.n_augments:
             # Keep the original text and sample from the rest
@@ -211,18 +211,55 @@ class TextSurfaceAugmenter(BaseAxisAugmenter):
             rest = unique_variations[1:]
             sampled = random.sample(rest, min(self.n_augments - 1, len(rest)))
             return [original] + sampled
-        
+
         return unique_variations
 
-
+    def swap_characters(self, text, prob=TextSurfaceAugmenterConstants.DEFAULT_TYPO_PROB, seed=0,
+                        max_outputs=TextSurfaceAugmenterConstants.DEFAULT_MAX_OUTPUTS):
+        """
+        Swaps characters in text, with probability prob for ang given pair.
+        Ex: 'apple' -> 'aplpe'
+        Arguments:
+            text (string): text to transform
+            prob (float): probability of any two characters swapping. Default: 0.05
+            seed (int): random seed
+            max_outputs: Maximum number of augmented outputs.
+            (taken from the NL-Augmenter project)
+        """
+        results = []
+        for _ in range(max_outputs):
+            max_seed = 2 ** 32
+            # seed with hash so each text of same length gets different treatment.
+            np.random.seed((seed + sum([ord(c) for c in text])) % max_seed)
+            # np.random.seed((seed) % max_seed).
+            # number of possible characters to swap.
+            num_pairs = len(text) - 1
+            # if no pairs, do nothing
+            if num_pairs < 1:
+                return text
+            # get indices to swap.
+            indices_to_swap = np.argwhere(
+                np.random.rand(num_pairs) < prob
+            ).reshape(-1)
+            # shuffle swapping order, may matter if there are adjacent swaps.
+            np.random.shuffle(indices_to_swap)
+            # convert to list.
+            text = list(text)
+            # swap.
+            for index in indices_to_swap:
+                text[index], text[index + 1] = text[index + 1], text[index]
+            # convert to string.
+            text = "".join(text)
+            results.append(text)
+        return results
 if __name__ == "__main__":
     # Create the augmenter
     augmenter = TextSurfaceAugmenter(n_augments=5)
-    
+
     # Example 1: Simple text with default sequence
     text1 = "This is a simple example of text surface augmentation."
     variations1 = augmenter.augment(text1)
-    
+
     print(f"Original text: {text1}")
     print(f"\nGenerated {len(variations1)} variations with default sequence:")
     for i, variation in enumerate(variations1):
@@ -232,11 +269,11 @@ if __name__ == "__main__":
             print(f"\nVariation {i+1}:")
         print(variation)
         print("-" * 50)
-    
+
     # Example 2: Custom sequence
     text2 = "What is the capital of France? Paris is the correct answer."
     variations2 = augmenter.augment(text2, techniques=["spacing", "typos"])
-    
+
     print(f"\nOriginal text: {text2}")
     print(f"\nGenerated {len(variations2)} variations with custom sequence (spacing → typos):")
     for i, variation in enumerate(variations2):
@@ -246,7 +283,7 @@ if __name__ == "__main__":
             print(f"\nVariation {i+1}:")
         print(variation)
         print("-" * 50)
-    
+
     # Example 3: Individual transformations
     print("\nIndividual transformations:")
     print(f"Original: {text1}")
