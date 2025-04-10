@@ -2,23 +2,13 @@
 import streamlit as st
 import json
 
-# # Default flat list of dimensions
-# DEFAULT_DIMENSIONS = [
-#     ("order_of_composition", "Order of composition"),
-#     ("paraphrases", "Paraphrases"),
-#     ("non_semantic", "Non-semantic / structural changes"),
-#     ("which_few_shot", "Which few-shot examples"),
-#     ("how_many_few_shot", "How many few-shot examples"),
-#     ("irrelevant_context", "Add irrelevant context"),
-#     ("multi_doc_order", "Order of provided documents"),
-#     ("multi_doc_concat", "How to concatenate documents"),
-#     ("multi_doc_irrelevant", "Add irrelevant documents"),
-#     ("mc_order_of_answers", "Order of answers"),
-#     ("mc_enumeration", "Enumeration (letters, numbers, etc)"),
-# ]
 
 def render():
     st.title("Step 4: Assign Dimensions to Parts")
+
+    with st.expander("ℹ️ What are dimensions?"):
+        all_dimensions = st.session_state.base_dimensions + st.session_state.custom_dimensions
+        st.json(all_dimensions)
 
     if "annotated_parts" not in st.session_state or not st.session_state.annotated_parts:
         st.warning("Please annotate prompt parts first.")
@@ -50,7 +40,9 @@ def render():
             key=f"dims_{part_key}"
         )
 
-        st.session_state.dimension_assignments[part_key] = assigned
+        if len(assigned) > 0 and assigned != st.session_state.dimension_assignments.get(part_key, []):
+            st.session_state.dimension_assignments[part_key] = assigned
+            st.rerun()
 
     # Save final annotations
     if st.button("Save All Assignments to JSON"):
