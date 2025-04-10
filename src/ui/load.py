@@ -1,5 +1,5 @@
 import streamlit as st
-from src.ui import ask_user_for_info, upload_csv, annotate_prompt, assign_dimensions, add_dimensions, run_augmentations
+from src.ui import ask_user_for_info, upload_csv, annotate_prompt, assign_dimensions, add_dimensions, run_augmentations, show_variants
 from src.ui.progress_indicator import show_progress_indicator
 # from src.decompose_tasks import instruction_breakdown
 import json
@@ -13,7 +13,7 @@ def main():
         st.session_state.page = 1
 
     # Total number of pages in the application
-    total_pages = 6
+    total_pages = 7
 
     # Display the progress indicator at the top of every page
     current_page = st.session_state.page
@@ -32,6 +32,8 @@ def main():
         ask_user_for_info.render()
     elif st.session_state.page == 6:
         run_augmentations.render()
+    elif st.session_state.page == 7:
+        show_variants.render()
 
 if __name__ == '__main__':
     main()
