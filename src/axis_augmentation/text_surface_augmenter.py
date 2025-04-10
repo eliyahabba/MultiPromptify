@@ -3,6 +3,8 @@ import itertools
 import random
 import re
 
+import numpy as np
+
 from src.axis_augmentation.base_augmenter import BaseAxisAugmenter
 from src.utils.constants import TextSurfaceAugmenterConstants
 
@@ -149,6 +151,44 @@ class TextSurfaceAugmenter(BaseAxisAugmenter):
             results.append(result)
         return results
 
+    def swap_characters(self, text, prob=TextSurfaceAugmenterConstants.DEFAULT_TYPO_PROB, seed=0,
+                        max_outputs=TextSurfaceAugmenterConstants.DEFAULT_MAX_OUTPUTS):
+        """
+        Swaps characters in text, with probability prob for ang given pair.
+        Ex: 'apple' -> 'aplpe'
+        Arguments:
+            text (string): text to transform
+            prob (float): probability of any two characters swapping. Default: 0.05
+            seed (int): random seed
+            max_outputs: Maximum number of augmented outputs.
+            (taken from the NL-Augmenter project)
+        """
+        results = []
+        for _ in range(max_outputs):
+            max_seed = 2 ** 32
+            # seed with hash so each text of same length gets different treatment.
+            np.random.seed((seed + sum([ord(c) for c in text])) % max_seed)
+            # np.random.seed((seed) % max_seed).
+            # number of possible characters to swap.
+            num_pairs = len(text) - 1
+            # if no pairs, do nothing
+            if num_pairs < 1:
+                return text
+            # get indices to swap.
+            indices_to_swap = np.argwhere(
+                np.random.rand(num_pairs) < prob
+            ).reshape(-1)
+            # shuffle swapping order, may matter if there are adjacent swaps.
+            np.random.shuffle(indices_to_swap)
+            # convert to list.
+            text = list(text)
+            # swap.
+            for index in indices_to_swap:
+                text[index], text[index + 1] = text[index + 1], text[index]
+            # convert to string.
+            text = "".join(text)
+            results.append(text)
+        return results
 
 if __name__ == "__main__":
     # Example usage
@@ -168,3 +208,7 @@ if __name__ == "__main__":
     # Example usage of change_char_case
     char_case_texts = augmenter.change_char_case(inputs[0], prob=0.2, max_outputs=3)
     print("Change Char Case Text:", char_case_texts)
+
+    # Example usage of swap_characters
+    swap_texts = augmenter.swap_characters(inputs[1], prob=0.05, max_outputs=3)
+    print("Swap Characters Text:", swap_texts)
