@@ -55,6 +55,16 @@
       "output": {
         "text": "The answer is B) Energy production. Mitochondria are often referred to as the 'powerhouses of the cell' because their primary function is to convert nutrients into ATP (adenosine triphosphate)."
       }
-    }
+    },
+    "costume_dimensions": [
+      {
+        "id": "abb",
+        "name": "abb",
+        "description": "abbrevations",
+        "examples": [
+          "a -> b"
+        ]
+      }
+    ]
   }
 ]

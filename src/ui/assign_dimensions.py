@@ -56,6 +56,7 @@ def render():
                     "dimensions": st.session_state.dimension_assignments.get(part, [])
                 }
             parts["annotations"] = entry
+            parts["costume_dimensions"] = st.session_state.custom_dimensions
             output.append(parts)
         st.session_state.final_annotations_output = output
 
