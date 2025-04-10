@@ -14,7 +14,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Configure Streamlit CLI arguments
-    sys.argv = ["streamlit", "run", "app.py",
+    sys.argv = ["streamlit", "run", "load.py",
                 "--server.address", "localhost",
                 "--server.enableCORS", "false",
                 "--server.enableXsrfProtection", "false",
