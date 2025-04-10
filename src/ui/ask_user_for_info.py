@@ -42,12 +42,15 @@ def render():
                     all_data_path = f"{output_dir}/all_data.csv"
                     st.session_state.csv_data.to_csv(all_data_path, index=False)
                     out_path = f"{output_dir}/predictions.csv"
+                    if st.session_state.get("platform").lower() == "togetherai":
+                        os.environ["TOGETHER_API_KEY"] = st.session_state.api_key
                     instruction_breakdown.main(annotation_file=annotations_path,
                                               input_csv=all_data_path,
                                               output_csv=out_path,
                                               input_column="prompt",
                                               model_id=st.session_state.model_name,
-                                              delay=0.5)
+                                              delay=0.5,
+                                               provider="together")
                     st.success("✅ Prediction successful!")
                     st.session_state.page = 6
                     time.sleep(3)
