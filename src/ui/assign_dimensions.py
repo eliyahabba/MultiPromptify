@@ -57,7 +57,15 @@ def render():
                 }
             parts["annotations"] = entry
             output.append(parts)
+        st.session_state.final_annotations_output = output
 
         json_str = json.dumps(output, indent=2)
         st.download_button("Download JSON", data=json_str, file_name="final_annotations.json", mime="application/json")
 
+    if st.button("Continue to predict breakdown"):
+        if not "final_annotations_output" in st.session_state:
+            st.warning("Please save the annotations before proceeding.")
+            return
+        else:
+            st.session_state.page = 5
+            st.rerun()
