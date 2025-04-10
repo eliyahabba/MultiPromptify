@@ -15,7 +15,7 @@ llm_template = (
 # the word "creative"
 talkative_template = (
     "Can you help me write a prompt to an LLM for the following task "
-    "description? Providing {k} creative versions while preserving the "
+    "description? Providing {n_augments} creative versions while preserving the "
     "original meaning. \nOutput only a Python list of strings with the "
     "alternatives. Do not include any explanation or additional text. \n"
     "Prompt: '''{prompt}'''"
@@ -42,7 +42,7 @@ class Paraphrase(BaseAxisAugmenter):
         return ast.literal_eval(response)
 
 
-# if __name__ == '__main__':
-#     para = Paraphrase(10)
-#     print(para.augment("Describe a historical figure you admire"))
-#
+if __name__ == '__main__':
+    para = Paraphrase(10)
+    print(para.augment("Describe a historical figure you admire"))
+

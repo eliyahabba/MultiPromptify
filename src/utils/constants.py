@@ -2,6 +2,8 @@
 
 # Model configuration
 DEFAULT_MODEL = "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"
+MAX_TOKENS = 2048
+TEMPERATURE = 0.7
 
 # Variation dimensions that can be selected
 VARIATION_DIMENSIONS = [

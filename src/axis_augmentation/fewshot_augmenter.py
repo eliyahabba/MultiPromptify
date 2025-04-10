@@ -1,7 +1,6 @@
-from typing import Dict, List
-
+from typing import Dict, List, Any
 import pandas as pd
-from datasets import load_dataset
+import random
 
 from src.axis_augmentation.base_augmenter import BaseAxisAugmenter
 from src.utils.constants import FewShotConstants
@@ -13,19 +12,71 @@ class FewShotAugmenter(BaseAxisAugmenter):
     It selects examples from a dataset to provide context for each question.
     """
 
-    def __init__(self, num_examples: int = 1):
+    def __init__(self, num_examples: int = 1, n_augments: int = 3):
         """
         Initialize the few-shot augmenter.
-        :param num_examples: number of examples to include for each question
+        
+        Args:
+            num_examples: Number of examples to include for each question
+            n_augments: Number of variations to generate (used for consistency with other augmenters)
         """
+        super().__init__(n_augments=n_augments)
         self.num_examples = num_examples
+        self.dataset = None
+
+    def get_name(self):
+        return "Few-Shot Examples"
+
+    def set_dataset(self, dataset: pd.DataFrame):
+        """
+        Set the dataset to use for few-shot examples.
+        
+        Args:
+            dataset: DataFrame with 'input' and 'output' columns
+        """
+        if "input" not in dataset.columns or "output" not in dataset.columns:
+            raise ValueError("Dataset must contain columns - 'input', 'output'")
+        self.dataset = dataset
+
+    def augment(self, prompt: str, identification_data: Dict[str, Any] = None) -> List[str]:
+        """
+        Generate few-shot variations of the prompt.
+        
+        Args:
+            prompt: The original prompt text
+            identification_data: Optional data containing a dataset to use
+            
+        Returns:
+            List of variations with few-shot examples
+        """
+        # If no dataset is provided, try to use identification_data or return original prompt
+        dataset = self.dataset
+        if dataset is None and identification_data and "dataset" in identification_data:
+            dataset = identification_data["dataset"]
+        
+        if dataset is None:
+            return [prompt]
+        
+        # Create variations with different examples
+        variations = []
+        for _ in range(self.n_augments):
+            # Get random examples for this variation
+            examples = self._get_examples_for_question(prompt, dataset)
+            formatted = self.format_examples(examples)
+            variations.append(formatted)
+        
+        return variations[:self.n_augments]
 
     def augment_all_questions(self, df) -> Dict[str, List[str]]:
         """
         Process all questions in the dataframe and return few-shot examples for each.
-        :param df: DataFrame with 'input' and 'output' columns
-        :return: Dictionary where keys are input questions and values are lists of
-                few-shot example strings
+        
+        Args:
+            df: DataFrame with 'input' and 'output' columns
+            
+        Returns:
+            Dictionary where keys are input questions and values are lists of
+            few-shot example strings
         """
         if "input" not in df.columns or "output" not in df.columns:
             raise ValueError("Dataframe must contain columns - 'input', 'output'")
@@ -43,9 +94,13 @@ class FewShotAugmenter(BaseAxisAugmenter):
     def _get_examples_for_question(self, question: str, df) -> List[str]:
         """
         Get few-shot examples for a specific question.
-        :param question: the input question to find examples for
-        :param df: DataFrame containing all examples
-        :return: a list of formatted example strings
+        
+        Args:
+            question: the input question to find examples for
+            df: DataFrame containing all examples
+            
+        Returns:
+            a list of formatted example strings
         """
         result = []
         temp_df = df.copy()
@@ -73,43 +128,153 @@ class FewShotAugmenter(BaseAxisAugmenter):
     def format_examples(self, examples: List[str]) -> str:
         """
         Format the few-shot examples into a string.
-        :param examples: list of formatted example strings
-        :return: formatted string of examples
+        
+        Args:
+            examples: list of formatted example strings
+            
+        Returns:
+            formatted string of examples
         """
         return FewShotConstants.EXAMPLE_SEPARATOR.join(examples)
 
+    def create_few_shot_prompt(self, test_question: str, example_pairs: List[tuple]) -> str:
+        """
+        Create a few-shot prompt with provided examples and a test question.
+        
+        Args:
+            test_question: The question to answer (will be placed at the end)
+            example_pairs: List of (question, answer) tuples to use as examples
+            
+        Returns:
+            A formatted few-shot prompt string
+        """
+        examples = []
+        
+        # Add the provided examples
+        for question, answer in example_pairs:
+            examples.append(FewShotConstants.EXAMPLE_FORMAT.format(question, answer))
+        
+        # Add the test question
+        examples.append(FewShotConstants.QUESTION_FORMAT.format(test_question))
+        
+        # Format and return the prompt
+        return self.format_examples(examples)
+
+    def augment_with_examples(self, test_question: str, example_pool: List[tuple]) -> List[str]:
+        """
+        Create multiple few-shot prompt variations by sampling different examples
+        and varying their order.
+        
+        Args:
+            test_question: The question to answer (will be placed at the end)
+            example_pool: List of (question, answer) tuples to sample from
+            
+        Returns:
+            List of formatted few-shot prompt variations
+        """
+        if len(example_pool) < self.num_examples:
+            # Not enough examples to sample from
+            return [self.create_few_shot_prompt(test_question, example_pool)]
+        
+        variations = []
+        
+        # Create n_augments variations
+        for _ in range(self.n_augments):
+            # Sample examples
+            sampled_examples = random.sample(example_pool, min(self.num_examples, len(example_pool)))
+            
+            # Optionally shuffle the order (50% chance)
+            if random.random() > 0.5:
+                random.shuffle(sampled_examples)
+            
+            # Create the prompt
+            prompt = self.create_few_shot_prompt(test_question, sampled_examples)
+            variations.append(prompt)
+        
+        # Remove duplicates while preserving order
+        unique_variations = []
+        for var in variations:
+            if var not in unique_variations:
+                unique_variations.append(var)
+        
+        return unique_variations
+
 
 if __name__ == "__main__":
-    # Load data from Hugging Face
-    print("Loading data from Hugging Face...")
-    dataset = load_dataset("squad_v2", split="validation[:20]")
-
-    # Convert to input/output format
-    hf_data = {
-        "input": [item["question"] for item in dataset],
-        "output": [
-            (
-                item["answers"]["text"][0]
-                if item["answers"]["text"]
-                else "No answer available"
-            )
-            for item in dataset
+    # Load sample data
+    print("Creating sample data...")
+    sample_data = pd.DataFrame({
+        "input": [
+            "What is the capital of France?",
+            "What is the largest planet in our solar system?",
+            "Who wrote Romeo and Juliet?",
+            "What is the boiling point of water?",
+            "What is the chemical symbol for gold?"
         ],
-    }
-    df = pd.DataFrame(hf_data)
-    print(f"Loaded {len(df)} examples")
+        "output": [
+            "Paris",
+            "Jupiter",
+            "William Shakespeare",
+            "100 degrees Celsius",
+            "Au"
+        ]
+    })
+    print(f"Created sample data with {len(sample_data)} examples")
 
     # Create augmenter and generate examples
-    augmenter = FewShotAugmenter(num_examples=2)
-    all_examples = augmenter.augment_all_questions(df)
+    augmenter = FewShotAugmenter(num_examples=2, n_augments=3)
+    augmenter.set_dataset(sample_data)
+    
+    # Test the augment method
+    test_question = "What is the tallest mountain in the world?"
+    variations = augmenter.augment(test_question)
+    
+    print(f"\nOriginal question: {test_question}")
+    print(f"\nGenerated {len(variations)} variations:")
+    for i, variation in enumerate(variations):
+        print(f"\nVariation {i+1}:")
+        print(variation)
+    
+    # Test augment_all_questions
+    all_examples = augmenter.augment_all_questions(sample_data)
+    
+    print("\n\nFew-shot examples for all questions:")
+    for question, examples in all_examples.items():
+        print(f"\nQuestion: {question}")
+        print("Few-shot format:")
+        print(augmenter.format_examples(examples))
+        print("-" * 50)
 
-    # Show a sample of augmented data
-    sample_question = list(all_examples.keys())[0]
-    print(f"\nQuestion: {sample_question}")
-    print("\nFew-shot examples:")
-    for example in all_examples[sample_question]:
-        print(example)
+    # Test create_few_shot_prompt
+    print("\n\nTesting create_few_shot_prompt:")
+    example_pairs = [
+        ("What is the capital of Italy?", "Rome"),
+        ("What is the largest ocean?", "Pacific Ocean"),
+        ("Who painted the Mona Lisa?", "Leonardo da Vinci")
+    ]
+    test_q = "What is the speed of light?"
 
-    # Show formatted example
-    print("\nFormatted example:")
-    print(augmenter.format_examples(all_examples[sample_question]))
+    few_shot_prompt = augmenter.create_few_shot_prompt(test_q, example_pairs)
+    print(few_shot_prompt)
+
+    # Test augment_with_examples
+    print("\n\nTesting augment_with_examples:")
+    example_pool = [
+        ("What is the capital of Italy?", "Rome"),
+        ("What is the largest ocean?", "Pacific Ocean"),
+        ("Who painted the Mona Lisa?", "Leonardo da Vinci"),
+        ("What is the chemical symbol for water?", "H2O"),
+        ("What is the tallest building in the world?", "Burj Khalifa"),
+        ("Who wrote 'Pride and Prejudice'?", "Jane Austen")
+    ]
+    test_q = "What is the speed of light?"
+
+    # Create an augmenter with 2 examples per prompt and 3 variations
+    sampling_augmenter = FewShotAugmenter(num_examples=2, n_augments=3)
+    few_shot_variations = sampling_augmenter.augment_with_examples(test_q, example_pool)
+
+    print(f"Generated {len(few_shot_variations)} variations:")
+    for i, variation in enumerate(few_shot_variations):
+        print(f"\nVariation {i+1}:")
+        print(variation)
+        print("-" * 50)

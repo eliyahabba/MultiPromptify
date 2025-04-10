@@ -7,7 +7,7 @@ from datasets import load_dataset
 from src.utils.constants import MultiDocConstants
 
 
-class multidoc_augmenter():
+class MultiDocAugmenter():
     """
     This augmenter is intended for multi-document tasks, and performs augmentation on the
     list of documents of each example in the dataset.
@@ -84,7 +84,7 @@ if __name__ == "__main__":  # Example usage
     corpus = [item[0]['text'] for item in ds]  # entire corpus
 
     # run the augmenter on the example documents
-    augmenter = multidoc_augmenter()
+    augmenter = MultiDocAugmenter()
     docs_extended = augmenter.add_random_contexts(docs, corpus, 2)
     docs_permutations = augmenter.permute_docs_order(docs_extended, 5)
     docs_concatenated = augmenter.concatenate_docs(docs_permutations[0], "titles")
