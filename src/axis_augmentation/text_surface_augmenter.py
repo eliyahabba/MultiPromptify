@@ -4,6 +4,8 @@ import random
 import re
 from typing import List
 
+import numpy as np
+
 from src.axis_augmentation.base_augmenter import BaseAxisAugmenter
 from src.utils.constants import TextSurfaceAugmenterConstants
 
