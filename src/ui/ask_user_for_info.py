@@ -18,10 +18,10 @@ def render():
         api_key = st.text_input(f"{platform} API Key", type="password", key="api_key")
 
         st.subheader("📦 Model Name")
-        model_name = st.text_input("Model Name", key="model_name", default=DEFAULT_MODEL)
+        model_name = st.text_input("Model Name", key="model_name", value=DEFAULT_MODEL)
 
         st.subheader("📁 Output Directory")
-        output_dir = st.text_input("Output Directory", key="output_dir", default="tmp/")
+        output_dir = st.text_input("Output Directory", key="output_dir", value="tmp/")
 
         submitted = st.form_submit_button("🚀 Start Prediction")
 
