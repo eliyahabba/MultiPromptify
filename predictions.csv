@@ -1,0 +1,55 @@
+prompt,output,breakdown_text,breakdown_json,dim_breakdown,dim_context,dim_examples,dim_task_description
+Answer the provided question: What is the primary function of the mitochondria in a cell? A) Protein synthesis B) DNA replication C) Energy production D) Waste removal,C,"Breakdown:
+Task Description:
+- Answer the provided question
+
+Context: 
+- The question is about cell biology, specifically the function of mitochondria.
+
+Examples: 
+- The mitochondria is often referred to as the ""powerhouse"" of the cell, indicating its role in energy production.
+- Mitochondria are known to generate most of the cell's supply of adenosine triphosphate (ATP), which is used as a source of chemical energy.","{""Breakdown"": [], ""Task Description"": [""Answer the provided question""], ""Context"": [""The question is about cell biology, specifically the function of mitochondria.""], ""Examples"": [""The mitochondria is often referred to as the \""powerhouse\"" of the cell, indicating its role in energy production."", ""Mitochondria are known to generate most of the cell's supply of adenosine triphosphate (ATP), which is used as a source of chemical energy.""]}",,"The question is about cell biology, specifically the function of mitochondria.","The mitochondria is often referred to as the ""powerhouse"" of the cell, indicating its role in energy production.
+Mitochondria are known to generate most of the cell's supply of adenosine triphosphate (ATP), which is used as a source of chemical energy.",Answer the provided question
+Answer the provided question: Who wrote the philosophical work 'Critique of Pure Reason'? A) Descartes B) Kant C) Hume D) Nietzsche,B,"Breakdown:
+Task Description:
+- Answer the provided question
+
+Context:
+- The question is about the author of a specific philosophical work, 'Critique of Pure Reason'
+- The options provided are names of famous philosophers: Descartes, Kant, Hume, and Nietzsche
+
+Examples:
+- This question requires knowledge of philosophy and famous philosophers
+- The correct answer can be identified by recognizing the author of 'Critique of Pure Reason' as Immanuel Kant","{""Breakdown"": [], ""Task Description"": [""Answer the provided question""], ""Context"": [""The question is about the author of a specific philosophical work, 'Critique of Pure Reason'"", ""The options provided are names of famous philosophers: Descartes, Kant, Hume, and Nietzsche""], ""Examples"": [""This question requires knowledge of philosophy and famous philosophers"", ""The correct answer can be identified by recognizing the author of 'Critique of Pure Reason' as Immanuel Kant""]}",,"The question is about the author of a specific philosophical work, 'Critique of Pure Reason'
+The options provided are names of famous philosophers: Descartes, Kant, Hume, and Nietzsche","This question requires knowledge of philosophy and famous philosophers
+The correct answer can be identified by recognizing the author of 'Critique of Pure Reason' as Immanuel Kant",Answer the provided question
+"Answer the provided question: In U.S. law, what is *habeas corpus* primarily used for? A) To declare bankruptcy B) To challenge unlawful detention C) To request a retrial D) To appeal a verdict",B,"Breakdown:
+Task Description:
+- Answer the provided question
+
+Context:
+- The question is related to U.S. law
+- The term ""*habeas corpus*"" is specifically mentioned, implying the question is about its primary use in the legal system
+
+Examples:
+- A) To declare bankruptcy
+- B) To challenge unlawful detention
+- C) To request a retrial
+- D) To appeal a verdict","{""Breakdown"": [], ""Task Description"": [""Answer the provided question""], ""Context"": [""The question is related to U.S. law"", ""The term \""*habeas corpus*\"" is specifically mentioned, implying the question is about its primary use in the legal system""], ""Examples"": [""A) To declare bankruptcy"", ""B) To challenge unlawful detention"", ""C) To request a retrial"", ""D) To appeal a verdict""]}",,"The question is related to U.S. law
+The term ""*habeas corpus*"" is specifically mentioned, implying the question is about its primary use in the legal system","A) To declare bankruptcy
+B) To challenge unlawful detention
+C) To request a retrial
+D) To appeal a verdict",Answer the provided question
+Answer the provided question: What gas do plants absorb from the atmosphere? A. Oxygen B. Nitrogen C. Carbon Dioxide D. Hydrogen,C,"Breakdown:
+Task Description:
+- Answer the provided question
+
+Context:
+- The question is about the gas absorbed by plants from the atmosphere.
+- The options provided are A. Oxygen, B. Nitrogen, C. Carbon Dioxide, and D. Hydrogen.
+
+Examples:
+- This question requires knowledge of plant biology and photosynthesis.
+- The correct answer is related to the process by which plants produce their food using sunlight, water, and a specific gas from the atmosphere.","{""Breakdown"": [], ""Task Description"": [""Answer the provided question""], ""Context"": [""The question is about the gas absorbed by plants from the atmosphere."", ""The options provided are A. Oxygen, B. Nitrogen, C. Carbon Dioxide, and D. Hydrogen.""], ""Examples"": [""This question requires knowledge of plant biology and photosynthesis."", ""The correct answer is related to the process by which plants produce their food using sunlight, water, and a specific gas from the atmosphere.""]}",,"The question is about the gas absorbed by plants from the atmosphere.
+The options provided are A. Oxygen, B. Nitrogen, C. Carbon Dioxide, and D. Hydrogen.","This question requires knowledge of plant biology and photosynthesis.
+The correct answer is related to the process by which plants produce their food using sunlight, water, and a specific gas from the atmosphere.",Answer the provided question
