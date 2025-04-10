@@ -17,10 +17,10 @@ def render():
         api_key = st.text_input(f"{platform} API Key", type="password", key="api_key")
 
         st.subheader("📦 Model Name")
-        model_name = st.text_input("Model Name", key="model_name")
+        model_name = st.text_input("Model Name", key="model_name", default="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free")
 
         st.subheader("📁 Output Directory")
-        output_dir = st.text_input("Output Directory", key="output_dir")
+        output_dir = st.text_input("Output Directory", key="output_dir", default="tmp/")
 
         submitted = st.form_submit_button("🚀 Start Prediction")
 
