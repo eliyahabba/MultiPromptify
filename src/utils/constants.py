@@ -153,6 +153,8 @@ class TextSurfaceAugmenterConstants:
         "m": "mnkjloik",
         " ": " "
     }
+
+    PUNCTUATION_MARKS = [".", ",", "!", "?", ";", ":", "-", "_"]
     
     # Default probabilities
     DEFAULT_TYPO_PROB = 0.05

@@ -192,6 +192,28 @@ class TextSurfaceAugmenter(BaseAxisAugmenter):
             results.append(text)
         return results
 
+    def switch_punctuation(self, text, prob=TextSurfaceAugmenterConstants.DEFAULT_TYPO_PROB, seed=0, max_outputs=TextSurfaceAugmenterConstants.DEFAULT_MAX_OUTPUTS):
+        """
+        Switches punctuation in text with a probability of prob.
+        Arguments:
+            text (string): text to transform
+            prob (float): probability of any two characters switching. Default: 0.05
+            seed (int): random seed
+            max_outputs: Maximum number of augmented outputs.
+        """
+        results = []
+        for _ in range(max_outputs):
+            np.random.seed(seed)
+            text_chars = list(text)
+            for i in range(len(text_chars)):
+                if text_chars[i] in TextSurfaceAugmenterConstants.PUNCTUATION_MARKS and np.random.rand() < prob:
+                    # Randomly select a different punctuation mark to switch with
+                    new_punctuation = np.random.choice([p for p in TextSurfaceAugmenterConstants.PUNCTUATION_MARKS
+                                                        if p != text_chars[i]])
+                    text_chars[i] = new_punctuation
+            results.append("".join(text_chars))
+        return results
+
     def augment(self, text: str, techniques: List[str] = None) -> List[str]:
         """
         Apply text surface transformations to generate variations.
@@ -199,14 +221,14 @@ class TextSurfaceAugmenter(BaseAxisAugmenter):
         Args:
             text: The text to augment
             techniques: List of techniques to apply in sequence. If None, a default sequence will be used.
-                Options: "typos", "capitalization", "spacing", "swap_characters"
+                Options: "typos", "capitalization", "spacing", "swap_characters", "punctuation"
 
         Returns:
             List of augmented texts including the original text
         """
         # Default sequence if none provided
         if techniques is None:
-            techniques = ["typos", "capitalization", "spacing", "swap_characters"]
+            techniques = ["typos", "capitalization", "spacing", "swap_characters", "punctuation"]
 
         # Start with the original text
         variations = [text]
@@ -234,8 +256,12 @@ class TextSurfaceAugmenter(BaseAxisAugmenter):
                     new_variations.extend(spacing_results)
                 elif technique == "swap_characters":
                     # Add character swap variations
-                    swap_results = self.swap_characters(variation, prob=0.08, max_outputs=2)
+                    swap_results = self.swap_characters(variation, max_outputs=2)
                     new_variations.extend(swap_results)
+                elif technique == "punctuation":
+                    # Add punctuation variations
+                    punctuation_results = self.switch_punctuation(variation, max_outputs=2)
+                    new_variations.extend(punctuation_results)
 
             # Update variations for the next technique
             variations = new_variations
@@ -267,6 +293,7 @@ if __name__ == "__main__":
 
     # Example 1: Simple text with default sequence
     text1 = "This is a simple example of text surface augmentation."
+    text1_1 = "This, is a simple example: Text surface augmentation."
     variations1 = augmenter.augment(text1)
 
     print(f"Original text: {text1}")
@@ -300,3 +327,4 @@ if __name__ == "__main__":
     print(f"With capitalization changes: {augmenter.change_char_case(text1, prob=0.15, max_outputs=1)[0]}")
     print(f"With spacing changes: {augmenter.add_white_spaces(text1, max_outputs=1)[0]}")
     print(f"With character swaps: {augmenter.swap_characters(text1, prob=0.08, max_outputs=1)[0]}")
+    print(f"With punctuation changes: {augmenter.switch_punctuation(text1_1, prob=0.9, max_outputs=1)[0]}")
