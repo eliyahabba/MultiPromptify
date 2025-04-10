@@ -1,7 +1,7 @@
 # File: pages/annotate_prompt.py
 import streamlit as st
 
-num_annotations = 3
+num_annotations = 1
 
 
 def render():
@@ -11,9 +11,11 @@ def render():
         st.warning("Please upload a CSV first.")
         return
 
-    df = st.session_state.csv_data.sample(num_annotations, random_state=1)
+    if 'csv_data_sampled' not in st.session_state:
+        df = st.session_state.csv_data.sample(num_annotations, random_state=1)
+        st.session_state.csv_data_sampled = df
     idx = st.session_state.current_example_index
-    prompt = df['prompt'].iloc[idx]
+    prompt = st.session_state.csv_data_sampled['prompt'].iloc[idx]
 
     st.header(f"Prompt {idx + 1}/{num_annotations}")
     st.text_area("Prompt", value=prompt, height=200, disabled=True)
@@ -57,18 +59,23 @@ def render():
     with col2:
         if idx < num_annotations - 1 and st.button("Next"):
             st.session_state.current_example_index += 1
-            st.session_state.prompt = df['prompt'].iloc[st.session_state.current_example_index]
-            st.markdown("""
-                <script>
-                    setTimeout(() => {
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }, 100);
-                </script>
-            """, unsafe_allow_html=True)
+            st.session_state.prompt = st.session_state.csv_data_sampled['prompt'].iloc[st.session_state.current_example_index]
             st.rerun()
 
     if idx == num_annotations - 1:
         if st.button("Move to next part"):
             st.session_state.page = 3
             st.session_state.current_example_index = 0
+            for i in range(num_annotations):
+                parts = st.session_state.annotated_parts[i]
+                full_prompt = st.session_state.csv_data_sampled['prompt'].iloc[i]
+                placeholder_prompt = full_prompt
+                for part in parts:
+                    if len(parts[part]) == 0:
+                        continue
+                    placeholder_prompt = placeholder_prompt.replace(parts[part], "{"+part.upper()+"}")
+                st.session_state.annotated_parts[i] = {"full_prompt": full_prompt,
+                                                       "placeholder_prompt": placeholder_prompt,
+                                                       "annotations": parts}
+            print(st.session_state.annotated_parts)
             st.rerun()

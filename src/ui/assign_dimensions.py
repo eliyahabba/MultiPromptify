@@ -27,7 +27,7 @@ def render():
     # Collect all parts across all prompts
     all_parts = {}
     for example_parts in st.session_state.annotated_parts.values():
-        for part_key, text in example_parts.items():
+        for part_key, text in example_parts["annotations"].items():
             if part_key not in all_parts:
                 all_parts[part_key] = text  # take first appearance for display
 
@@ -56,13 +56,15 @@ def render():
     if st.button("Save All Assignments to JSON"):
         output = []
         for i, parts in st.session_state.annotated_parts.items():
+            only_annotations = parts["annotations"]
             entry = {}
-            for part, text in parts.items():
+            for part, text in only_annotations.items():
                 entry[part] = {
                     "text": text,
                     "dimensions": st.session_state.dimension_assignments.get(part, [])
                 }
-            output.append(entry)
+            parts["annotations"] = entry
+            output.append(parts)
 
         json_str = json.dumps(output, indent=2)
         st.download_button("Download JSON", data=json_str, file_name="final_annotations.json", mime="application/json")
