@@ -85,10 +85,13 @@ class ContextAugmenter(BaseAxisAugmenter):
         """
         if variation_type == "before":
             return f"""
-            Your task is to add irrelevant context BEFORE the following prompt.
-            IMPORTANT: The added context must NOT contain any hint or answer to the original prompt.
-            The added context should NOT change the meaning or expected answer of the original prompt.
-            The context should be coherent but not directly related to the task.
+            Your task is to add context BEFORE the following prompt.
+
+            IMPORTANT GUIDELINES:
+            1. The added context SHOULD be thematically related to the original prompt, maintaining a coherent flow.
+            2. The added context must NOT contain any hint or answer to the original prompt.
+            3. The added context should NOT change the meaning or expected answer of the original prompt.
+            4. The context should provide additional background or related information that feels natural.
 
             Original prompt:
             "{prompt}"
@@ -97,10 +100,13 @@ class ContextAugmenter(BaseAxisAugmenter):
             """
         elif variation_type == "after":
             return f"""
-            Your task is to add irrelevant context AFTER the following prompt.
-            IMPORTANT: The added context must NOT contain any hint or answer to the original prompt.
-            The added context should NOT change the meaning or expected answer of the original prompt.
-            The context should be coherent but not directly related to the task.
+            Your task is to add context AFTER the following prompt.
+
+            IMPORTANT GUIDELINES:
+            1. The added context SHOULD be thematically related to the original prompt, maintaining a coherent flow.
+            2. The added context must NOT contain any hint or answer to the original prompt.
+            3. The added context should NOT change the meaning or expected answer of the original prompt.
+            4. The context should provide additional background or related information that feels natural.
 
             Original prompt:
             "{prompt}"
@@ -109,17 +115,19 @@ class ContextAugmenter(BaseAxisAugmenter):
             """
         else:  # both
             return f"""
-            Your task is to add irrelevant context BOTH BEFORE AND AFTER the following prompt.
-            IMPORTANT: The added context must NOT contain any hint or answer to the original prompt.
-            The added context should NOT change the meaning or expected answer of the original prompt.
-            The context should be coherent but not directly related to the task.
+            Your task is to add context BOTH BEFORE AND AFTER the following prompt.
+
+            IMPORTANT GUIDELINES:
+            1. The added context SHOULD be thematically related to the original prompt, maintaining a coherent flow.
+            2. The added context must NOT contain any hint or answer to the original prompt.
+            3. The added context should NOT change the meaning or expected answer of the original prompt.
+            4. The context should provide additional background or related information that feels natural.
 
             Original prompt:
             "{prompt}"
 
             Return ONLY the modified prompt with added context before and after it. Do not include any explanations.
             """
-
 if __name__ == "__main__":
     # Create the augmenter
     augmenter = ContextAugmenter(n_augments=3)
