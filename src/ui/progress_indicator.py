@@ -1,6 +1,17 @@
 import streamlit as st
 
-def show_progress_indicator(current_page, total_pages=6):
+# Page descriptions for the progress indicator
+PAGE_DESCRIPTIONS = {
+    1: "Upload CSV",
+    2: "Annotate Prompt Parts",
+    3: "Define Dimensions",
+    4: "Assign Dimensions to Parts",
+    5: "Predict Prompt Parts",
+    6: "Run Augmentations",
+    7: "Show Variants"
+}
+
+def show_progress_indicator(current_page, total_pages=7):
     """
     Display a progress indicator showing which page the user is on and how many remain.
     
@@ -23,20 +34,12 @@ def show_progress_indicator(current_page, total_pages=6):
         # Show progress bar
         st.progress(progress_value)
         
-        # Page descriptions
-        page_descriptions = {
-            1: "Upload CSV",
-            2: "Annotate Prompt Parts",
-            3: "Define Dimensions",
-            4: "Assign Dimensions to Parts",
-            5: "Predict Prompt Parts",
-            6: "Run Augmentations"
-        }
-        
         # Show current page description
-        if current_page in page_descriptions:
-            st.markdown(f'<p style="text-align: center; font-weight: bold;">{page_descriptions[current_page]}</p>', 
-                      unsafe_allow_html=True)
+        if current_page in PAGE_DESCRIPTIONS:
+            st.markdown(
+                f'<p style="text-align: center; font-weight: bold;">{PAGE_DESCRIPTIONS[current_page]}</p>', 
+                unsafe_allow_html=True
+            )
         
         # Add a separator line
         st.markdown('<hr style="margin-top: 10px; margin-bottom: 20px;">', unsafe_allow_html=True)
