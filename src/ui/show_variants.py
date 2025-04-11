@@ -32,20 +32,10 @@ def render():
     st.title("Step 7: Final Variations Display")
 
     st.markdown("This step reads the file `augmented_variations.json` and shows all variations for each example, with each part highlighted in a different color.")
-
-    # If output_dir is stored in session_state, use that; otherwise default to "src/integration/augmented_variations.json"
-    if "output_dir" in st.session_state:
-        augmented_file = os.path.join(st.session_state.output_dir, "augmented_variations.json")
-    else:
-        augmented_file = "src/integration/augmented_variations.json"
-
-    if not os.path.exists(augmented_file):
-        st.warning("Could not find `augmented_variations.json`. Please complete the previous steps successfully.")
+    data = st.session_state.get("augmented_data", None)
+    if data is None:
+        st.error("No augmented data found. Please run the augmentation step first.")
         return
-
-    with open(augmented_file, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
     st.markdown("<hr>", unsafe_allow_html=True)
 
     # Display each example
