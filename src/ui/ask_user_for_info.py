@@ -5,6 +5,15 @@ import json
 from src.decompose_tasks import instruction_breakdown
 from src.utils.constants import DEFAULT_MODEL
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Get API key from environment
+API_KEY = os.getenv("TOGETHER_API_KEY")
+
+# Initialize the Together client
+
 
 def render():
     st.title("Step 5: Predict Prompt Parts")
@@ -15,7 +24,7 @@ def render():
         platform = st.selectbox("Platform", ["TogetherAI", "OpenAI"], key="platform")
 
         st.subheader(f"🔑 Enter your {platform} API Key")
-        api_key = st.text_input(f"{platform} API Key", type="password", key="api_key")
+        api_key = st.text_input(f"{platform} API Key", type="password", key="api_key", value=API_KEY)
 
         st.subheader("📦 Model Name")
         model_name = st.text_input("Model Name", key="model_name", value=DEFAULT_MODEL)
