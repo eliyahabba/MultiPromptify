@@ -1,8 +1,6 @@
 import streamlit as st
-import json
-import os
 
-# You can define background colors for each part here
+# Define background colors for each part of the prompt
 PART_COLORS = {
     "task_description": "#FFD580",  # light orange
     "context": "#BAE7FF",          # light blue
@@ -10,10 +8,42 @@ PART_COLORS = {
     "choices": "#FF9CDD",          # light pink
 }
 
+def render():
+    st.title("Step 7: Final Variations Display")
+    st.markdown("This step shows all generated variations for each example, with each part highlighted in a different color.")
+    
+    # Get augmented data from session state
+    data = st.session_state.get("augmented_data")
+    
+    if data is None:
+        st.error("No augmented data found. Please run the augmentation step first.")
+        return
+    
+    st.markdown("<hr>", unsafe_allow_html=True)
+    
+    # Display a legend for the color coding
+    display_color_legend()
+    
+    # Display each example and its variations
+    display_all_examples(data)
+    
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.success("All variations are displayed above.") 
+
+def display_color_legend():
+    """Display a legend for the color coding of prompt parts"""
+    st.markdown("### Color Legend")
+    legend_html = '<div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">'
+    
+    for part_name, color in PART_COLORS.items():
+        legend_html += f'<div style="padding: 5px 10px; background-color: {color}; border-radius: 4px;">{part_name.replace("_", " ").title()}</div>'
+    
+    legend_html += '</div>'
+    st.markdown(legend_html, unsafe_allow_html=True)
 
 def highlight_parts(final_prompt, parts):
     """
-    Replaces each occurrence of parts[part_name] in final_prompt with a colored span
+    Replace each occurrence of parts[part_name] in final_prompt with a colored span
     to highlight it according to the part_name.
     """
     highlighted = final_prompt
@@ -27,18 +57,8 @@ def highlight_parts(final_prompt, parts):
         )
     return highlighted
 
-
-def render():
-    st.title("Step 7: Final Variations Display")
-
-    st.markdown("This step reads the file `augmented_variations.json` and shows all variations for each example, with each part highlighted in a different color.")
-    data = st.session_state.get("augmented_data", None)
-    if data is None:
-        st.error("No augmented data found. Please run the augmentation step first.")
-        return
-    st.markdown("<hr>", unsafe_allow_html=True)
-
-    # Display each example
+def display_all_examples(data):
+    """Display all examples and their variations"""
     for example_index, example_item in enumerate(data):
         original_prompt = example_item.get("original_prompt", "")
         variations = example_item.get("variations", [])
@@ -47,18 +67,20 @@ def render():
         st.markdown("**Original Prompt:**")
         st.code(original_prompt, language="")
 
-        for var_index, var_item in enumerate(variations):
-            final_prompt = var_item.get("final_prompt", "")
-            parts = var_item.get("parts", {})
+        display_variations(variations)
 
-            highlighted_html = highlight_parts(final_prompt, parts)
-            st.markdown(f"**Variation {var_index + 1}:**", unsafe_allow_html=True)
-            st.markdown(
-                f'<div style="border:1px solid #ddd; padding:10px; border-radius:5px; margin-bottom:10px;">'
-                f'{highlighted_html}'
-                f'</div>',
-                unsafe_allow_html=True
-            )
+def display_variations(variations):
+    """Display all variations for a single example"""
+    for var_index, var_item in enumerate(variations):
+        final_prompt = var_item.get("final_prompt", "")
+        parts = var_item.get("parts", {})
 
-    st.markdown("<hr>", unsafe_allow_html=True)
-    st.success("All variations are displayed above.") 
+        highlighted_html = highlight_parts(final_prompt, parts)
+        
+        st.markdown(f"**Variation {var_index + 1}:**", unsafe_allow_html=True)
+        st.markdown(
+            f'<div style="border:1px solid #ddd; padding:10px; border-radius:5px; margin-bottom:10px;">'
+            f'{highlighted_html}'
+            f'</div>',
+            unsafe_allow_html=True
+        ) 
