@@ -357,117 +357,106 @@ def process_dataframe_with_structure(
 
 # --- Main Execution Logic ---
 
-def main(annotation_file: str, input_csv: str, output_csv: str,
-         input_column: str, model_id: str = "meta-llama/llama-3-3-70b-instruct",
-         delay: float = 0.5, provider: str = "together"):
+def main(
+    annotation_file,
+    input_csv,
+    output_csv,
+    input_column="prompt",
+    model_id=None,
+    delay=0.5,
+    provider="together",
+    memory_mode=False,
+    annotations_data=None,
+    csv_data=None
+):
     """
-    Main function to load data, process it for structured decomposition, and save results.
-
+    Main function for breaking down instructions.
+    
     Args:
-        annotation_file: Path to the JSON file with annotation examples.
-        input_csv: Path to the CSV file containing input text.
-        output_csv: Path to save the output CSV with results.
-        input_column: Column in input_csv containing text to analyze.
-        model_id: The model identifier (e.g., 'meta-llama/llama-3-3-70b-instruct', 'ibm/granite-13b-instruct-v2').
-        delay: Delay in seconds between LLM calls.
-        provider: The API provider to use ('together' or 'rits')
+        annotation_file: Path to the annotation file or "memory://" prefix if memory_mode=True
+        input_csv: Path to the input CSV file or "memory://" prefix if memory_mode=True
+        output_csv: Path to the output CSV file or "memory://" prefix if memory_mode=True
+        input_column: Name of the column in input_csv that contains the prompts
+        model_id: ID of the model to use
+        delay: Delay between requests
+        provider: Provider to use ("together" or "openai")
+        memory_mode: If True, use data from memory instead of files
+        annotations_data: Annotations data if memory_mode=True
+        csv_data: CSV data as DataFrame if memory_mode=True
+    
+    Returns:
+        DataFrame with predictions if memory_mode=True, None otherwise
     """
-    print("--- Starting Task Decomposition Script ---")
-    print(f"Annotation File: {annotation_file}")
-    print(f"Input CSV: {input_csv}")
-    print(f"Output CSV: {output_csv}")
-    print(f"Input Column: {input_column}")
-    print(f"Model ID: {model_id}")
-    print(f"API Provider: {provider}")
-    print(f"API Call Delay: {delay} seconds")
-
-    # Check file existence
-    if not os.path.exists(annotation_file):
-        print(f"Error: Annotation file not found: {annotation_file}")
-        return
-    if not os.path.exists(input_csv):
-        print(f"Error: Input CSV file not found: {input_csv}")
-        return
-
-    # Check if required configuration is present
-    if provider.lower() == "together":
-        together_api_key = os.getenv("TOGETHER_API_KEY")
-        if not together_api_key:
-            print("Error: TOGETHER_API_KEY environment variable must be set.")
-            print("Please create a .env file or set it in your environment.")
-            return  # Stop execution if config is missing
-        print(f"Using Together API with model: {model_id}")
-    elif provider.lower() == "rits":
-        rits_host = os.getenv("RITS_HOST")
-        rits_api_key = os.getenv("RITS_API_KEY")
-        if not rits_host or not rits_api_key:
-            print("Error: RITS_HOST and RITS_API_KEY environment variables must be set.")
-            print("Please create a .env file or set them in your environment.")
-            return  # Stop execution if config is missing
-        print(f"Using RITS Host: {rits_host}")
-        print(f"Using RITS Model ID: {model_id}")
+    print(f"Starting instruction breakdown with memory_mode={memory_mode}")
+    
+    # If memory mode, use the provided data
+    if memory_mode:
+        if annotations_data is None or csv_data is None:
+            raise ValueError("annotations_data and csv_data must be provided when memory_mode=True")
+        
+        # Use the data from memory
+        annotation_examples = load_annotation_examples_from_memory(annotations_data)
+        df = csv_data
     else:
-        print(f"Error: Unknown provider '{provider}'. Must be 'together' or 'rits'.")
-        return
-
-    try:
-        # 1. Load Annotation Examples
+        # Load data from files
         annotation_examples = load_annotation_examples(annotation_file)
-        if not annotation_examples:
-            print("Error: Could not load valid annotation examples. Exiting.")
-            return
+        df = pd.read_csv(input_csv)
+    
+    # Process the data with the original function
+    results_df = process_dataframe_with_structure(
+        df=df,
+        annotation_examples=annotation_examples,
+        input_column=input_column,
+        model_id=model_id,
+        delay_seconds=delay,
+        provider=provider
+    )
+    
+    # Save or return results
+    if memory_mode:
+        return results_df
+    else:
+        results_df.to_csv(output_csv, index=False)
+        return None
 
-        # 2. Load Input Data
-        try:
-            df = pd.read_csv(input_csv)
-            print(f"Loaded {len(df)} rows from {input_csv}")
-        except Exception as e:
-            print(f"Error reading input CSV file {input_csv}: {e}")
-            return
-
-        # Determine input column if not specified
-        target_input_column = input_column
-        if target_input_column is None:
-            if not df.empty:
-                target_input_column = df.columns[0]
-                print(f"Input column not specified, using the first column: '{target_input_column}'")
-            else:
-                print("Error: Input CSV is empty and no input column specified.")
-                return
-        elif target_input_column not in df.columns:
-             print(f"Error: Specified input column '{target_input_column}' not found in {input_csv}. Available: {list(df.columns)}")
-             return
-
-        # 3. Process Dataframe
-        result_df = process_dataframe_with_structure(
-            df=df,
-            annotation_examples=annotation_examples,
-            input_column=target_input_column,
-            model_id=model_id,
-            delay_seconds=delay,
-            provider=provider
-        )
-
-        # 4. Save Results
-        if not result_df.empty:
-            result_df.to_csv(output_csv, index=False, encoding='utf-8') # Added encoding
-            print(f"--- Results successfully saved to {output_csv} ---")
-
-            # Display sample results
-            print("\nSample of processed results (first row):")
-            sample = result_df.iloc[0].copy()
-            # Truncate long text fields for display
-            for col in ["breakdown_text", "breakdown_json"] + [c for c in result_df.columns if c.startswith('dim_')]:
-                 if col in sample and isinstance(sample[col], str):
-                     sample[col] = sample[col][:200] + "..." if len(sample[col]) > 200 else sample[col]
-            print(sample)
-        else:
-            print("Processing finished, but the resulting DataFrame is empty.")
-
-    except Exception as e:
-        print(f"--- An error occurred during the main execution ---")
-        print(f"Error: {e}")
-        traceback.print_exc()
+def load_annotation_examples_from_memory(annotations_data):
+    """
+    Convert annotations data from memory to the format expected by the processing function.
+    This is similar to load_annotation_examples but works with data already in memory.
+    
+    Args:
+        annotations_data: Annotations data as a list of dictionaries
+        
+    Returns:
+        List of example dictionaries in the standard format
+    """
+    examples = []
+    
+    for item in annotations_data:
+        if "full_prompt" in item and "annotations" in item:
+            # Convert to the standard format expected by the rest of the code
+            converted_item = {
+                "prompt": item["full_prompt"],
+                "dimensions": {}
+            }
+            
+            # Convert annotations to dimensions format
+            for key, annotation in item["annotations"].items():
+                if "text" in annotation:
+                    # Create a dimension entry with the annotation text as a highlight
+                    converted_item["dimensions"][key] = {
+                        "name": key.replace("_", " ").title(),  # Convert snake_case to Title Case
+                        "highlights": [
+                            {
+                                "text": annotation["text"]
+                                # No start/end positions
+                            }
+                        ]
+                    }
+            
+            examples.append(converted_item)
+    
+    return examples
 
 # --- Command Line Argument Parsing ---
 if __name__ == "__main__":
