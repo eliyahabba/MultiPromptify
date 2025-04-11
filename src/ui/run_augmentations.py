@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from src.integration.simple_augmenter import main as simple_augmenter_main
-from src.ui.map_csv_to_json import map_csv_to_json
+from src.ui.utils.map_csv_to_json import map_csv_to_json
 
 
 def render():
