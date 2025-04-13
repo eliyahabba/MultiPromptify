@@ -15,7 +15,8 @@ from src.axis_augmentation.paraphrase_instruct import Paraphrase
 from src.axis_augmentation.text_surface_augmenter import TextSurfaceAugmenter
 from src.utils.constants import (
     DEFAULT_ANNOTATIONS_INPUT_FILE,
-    DEFAULT_AUGMENTED_VARIATIONS_OUTPUT_FILE
+    DEFAULT_AUGMENTED_VARIATIONS_OUTPUT_FILE,
+    DEFAULT_VARIATIONS_PER_AXIS
 )
 
 # Define mapping between dimensions and augmenter classes
@@ -46,6 +47,7 @@ def save_results(results: List[Dict[str, Any]], output_file: str):
 def augment_part(
         text: str,
         dimensions: List[str],
+        variant_counts: Dict[str, int],
         part_name: str,
         annotations: List[Dict[str, Any]],
         current_index: int
@@ -56,6 +58,7 @@ def augment_part(
     Args:
         text: Text to augment
         dimensions: List of dimensions to apply
+        variant_counts: Dictionary mapping dimension names to the number of variants to generate
         part_name: Name of the part (for special handling)
         annotations: List of all annotations
         current_index: Index of the annotation being processed
@@ -63,7 +66,12 @@ def augment_part(
     Returns:
         List of augmented texts
     """
+    print(f"\n==== Augmenting {part_name} ====")
+    print(f"Dimensions selected: {dimensions}")
+    print(f"Variant counts: {variant_counts}")
+    
     if (not text and part_name != "examples") or not dimensions:
+        print("No text or dimensions - returning original text")
         return [text]
 
     # Select augmenters based on dimensions
@@ -71,8 +79,13 @@ def augment_part(
     special_data = {}
 
     for dim in dimensions:
+        # Get the variant count for this dimension (default to constant value if not specified)
+        n_augments = variant_counts.get(dim, DEFAULT_VARIATIONS_PER_AXIS)
+        print(f"Processing dimension: {dim} with {n_augments} requested variants")
+        
         if dim in DIMENSION_TO_AUGMENTER:
             augmenter_class = DIMENSION_TO_AUGMENTER[dim]
+            print(f"Using augmenter class: {augmenter_class.__name__}")
 
             if augmenter_class == FewShotAugmenter:
                 import pandas as pd
@@ -98,9 +111,11 @@ def augment_part(
                     "dataset": few_shot_df
                 }
 
-                augmenter = augmenter_class(num_examples=2, n_augments=3)
+                augmenter = augmenter_class(num_examples=2, n_augments=n_augments)
+                print(f"Created FewShotAugmenter with n_augments={n_augments}")
             else:
-                augmenter = augmenter_class(n_augments=3)
+                augmenter = augmenter_class(n_augments=n_augments)
+                print(f"Created {augmenter_class.__name__} with n_augments={n_augments}")
 
             # Special handling for multiple choice
             if augmenter_class == MultipleChoiceAugmenter and part_name == "choices":
@@ -129,16 +144,28 @@ def augment_part(
                 }
 
             augmenters.append(augmenter)
+        else:
+            print(f"WARNING: No augmenter found for dimension {dim}")
 
     # If no augmenters selected, return original text
     if not augmenters:
+        print("No augmenters selected - returning original text")
         return [text]
 
+    print(f"Created pipeline with {len(augmenters)} augmenters")
+    
     # Create pipeline with selected augmenters
-    pipeline = AugmentationPipeline(augmenters=augmenters, max_variations=5)
+    pipeline = AugmentationPipeline(augmenters=augmenters, max_variations=10)
 
     # Apply augmentation
-    return pipeline.augment(text, special_data)
+    variations = pipeline.augment(text, special_data)
+    print(f"Generated {len(variations)} total variations")
+    for i, var in enumerate(variations[:3]):  # Show first 3 variations only to avoid clutter
+        print(f"  Variation {i+1}: {var[:50]}{'...' if len(var) > 50 else ''}")
+    if len(variations) > 3:
+        print(f"  ...and {len(variations)-3} more variations")
+    
+    return variations
 
 
 def process_annotations(annotations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -161,8 +188,16 @@ def process_annotations(annotations: List[Dict[str, Any]]) -> List[Dict[str, Any
         for part_name, part_data in annotation["annotations"].items():
             text = part_data["text"]
             dimensions = part_data.get("dimensions", [])
+            variant_counts = part_data.get("variant_counts", {})
 
-            variations = augment_part(text, dimensions, part_name, annotations, idx)
+            variations = augment_part(
+                text, 
+                dimensions, 
+                variant_counts,
+                part_name, 
+                annotations, 
+                idx
+            )
             part_variations[part_name] = variations
             print(f"Generated {len(variations)} variations for {part_name}")
 
