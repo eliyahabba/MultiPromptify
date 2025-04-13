@@ -3,6 +3,9 @@ def map_csv_to_json(df, annotations):
     dimensions_to_each_dim = {}
     for dim, dim_val in annotations[0]["annotations"].items():
         dimensions_to_each_dim[dim] = dim_val["dimensions"]
+    num_of_var_to_each_dim = {}
+    for dim, dim_val in annotations[0]["annotations"].items():
+        num_of_var_to_each_dim[dim] = dim_val["variant_counts"]
     for _, row in df.iterrows():
         annotations = {}
         full_prompt = row["prompt"]
@@ -12,7 +15,7 @@ def map_csv_to_json(df, annotations):
                 continue
             if col.startswith("dim_"):
                 dim_name = col.replace("dim_", "")
-                annotations[dim_name] = {"text": row[col], "dimensions": dimensions_to_each_dim[dim_name]}
+                annotations[dim_name] = {"text": row[col], "dimensions": dimensions_to_each_dim[dim_name], "variant_counts": num_of_var_to_each_dim[dim_name]}
                 placeholder_prompt = placeholder_prompt.replace(row[col], "{" + dim_name.upper() + "}")
         current_sample_json = {
             "full_prompt": full_prompt,
