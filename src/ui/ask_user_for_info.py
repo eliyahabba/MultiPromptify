@@ -92,7 +92,6 @@ def process_form_submission():
                 run_prediction()
                 st.success("✅ Prediction successful!")
                 st.session_state.page = 6
-                time.sleep(2)
                 st.rerun()
             except Exception as e:
                 st.error(f"Prediction failed: {str(e)}")
