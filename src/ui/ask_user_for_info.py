@@ -143,6 +143,9 @@ def run_prediction():
         # Keep data in memory
         st.session_state['annotations_data'] = st.session_state.final_annotations_output
 
+    # Display information about the number of examples being used
+    st.info(f"Using {len(st.session_state.final_annotations_output)} annotated examples for prediction")
+
     # Run instruction breakdown
     results_df = instruction_breakdown.main(
         annotation_file=annotations_path,

@@ -442,7 +442,7 @@ def load_annotation_examples_from_memory(annotations_data):
             
             # Convert annotations to dimensions format
             for key, annotation in item["annotations"].items():
-                if "text" in annotation:
+                if isinstance(annotation, dict) and "text" in annotation:
                     # Create a dimension entry with the annotation text as a highlight
                     converted_item["dimensions"][key] = {
                         "name": key.replace("_", " ").title(),  # Convert snake_case to Title Case
@@ -453,9 +453,20 @@ def load_annotation_examples_from_memory(annotations_data):
                             }
                         ]
                     }
+                elif isinstance(annotation, str) and annotation:
+                    # Handle the case where annotation is directly a string
+                    converted_item["dimensions"][key] = {
+                        "name": key.replace("_", " ").title(),
+                        "highlights": [
+                            {
+                                "text": annotation
+                            }
+                        ]
+                    }
             
             examples.append(converted_item)
     
+    print(f"Loaded {len(examples)} annotation examples from memory")
     return examples
 
 # --- Command Line Argument Parsing ---
