@@ -9,14 +9,23 @@ def map_csv_to_json(df, annotations):
     for _, row in df.iterrows():
         annotations = {}
         full_prompt = row["prompt"]
+        output_text = row.get("output", "")  # Get output if it exists
         placeholder_prompt = full_prompt
         for col in df.columns:
-            if col == "dim_breakdown":
+            if col in ["dim_breakdown", "output"]:  # Skip output and dim_breakdown columns
                 continue
             if col.startswith("dim_"):
                 dim_name = col.replace("dim_", "")
                 annotations[dim_name] = {"text": row[col], "dimensions": dimensions_to_each_dim[dim_name], "variant_counts": num_of_var_to_each_dim[dim_name]}
                 placeholder_prompt = placeholder_prompt.replace(row[col], "{" + dim_name.upper() + "}")
+        
+        # Add output to annotations
+        annotations["output"] = {"text": output_text}
+        
+        # Also add examples placeholder
+        annotations["examples"] = {"text": None, "dimensions": dimensions_to_each_dim.get("examples", []),
+                                 "variant_counts": num_of_var_to_each_dim.get("examples", {})}
+        
         current_sample_json = {
             "full_prompt": full_prompt,
             "placeholder_prompt": placeholder_prompt,
