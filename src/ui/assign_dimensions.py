@@ -29,9 +29,11 @@ def render():
             if part_key not in all_parts:
                 all_parts[part_key] = text
 
-    # Get all dimension names
+    # Get all dimension names and descriptions
     all_dimensions = st.session_state.base_dimensions + st.session_state.custom_dimensions
-    all_dimension_names = [d["name"] for d in all_dimensions]
+    all_dimension_names = [f"{d['name']} - {d['description']}" for d in all_dimensions]
+    dimension_name_to_option = {d['name']: f"{d['name']} - {d['description']}" for d in all_dimensions}
+    option_to_dimension_name = {f"{d['name']} - {d['description']}": d['name'] for d in all_dimensions}
 
     st.subheader("Assign Dimensions to Each Part")
 
@@ -40,14 +42,31 @@ def render():
         st.markdown(f"### {part_key.replace('_', ' ').title()}")
         st.text_area("Example Text", value=text, disabled=True, key=f"text_preview_{part_key}")
 
-        # Select dimensions to vary
+        # Get previously selected dimensions for this part
+        previously_selected = st.session_state.dimension_assignments.get(part_key, [])
+        
+        # Convert dimension names to options for multiselect
+        # Select dimensions to vary using multiselect
         multiselect_key = f"dims_{part_key}"
         selected_dims = st.multiselect(
-            "Select dimensions to vary",
+            "Select dimensions to vary:",
             options=all_dimension_names,
             key=multiselect_key
         )
-
+        
+        # Convert selected options back to dimension names
+        selected_dims = [option_to_dimension_name[option] for option in selected_dims]
+        
+        # Check if both few-shot options are available
+        few_shot_options = ["Which few-shot examples", "How many few-shot examples"]
+        selected_few_shot = [dim for dim in selected_dims if dim in few_shot_options]
+        
+        # If one few-shot option is selected, show a hint about the other
+        if len(selected_few_shot) == 1:
+            other_option = [opt for opt in few_shot_options if opt not in selected_few_shot][0]
+            st.info(f"💡 Tip: You can also select '{other_option}' to vary both aspects of few-shot examples.")
+        
+        # Update the dimension assignments
         st.session_state.dimension_assignments[part_key] = selected_dims
 
         # Show variant count inputs if dimensions are selected
@@ -88,12 +107,6 @@ def render():
                     )
 
                     # Update the session state for dimension_variant_counts
-                    st.session_state.dimension_variant_counts[part_key][dim_name] = st.session_state[count_key]
-
-                    # Debugging: Print the updated value
-                    st.write(f"Updated value for {dim_name}: {count_value}")
-
-                    # Update value in session state directly
                     st.session_state.dimension_variant_counts[part_key][dim_name] = count_value
 
                 # Move to next column
