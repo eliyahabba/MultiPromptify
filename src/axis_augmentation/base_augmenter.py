@@ -1,3 +1,5 @@
+from src.utils.constants import BaseAugmenterConstants
+
 class BaseAxisAugmenter:
     """
     Base class for all axis augmenters.
@@ -6,12 +8,12 @@ class BaseAxisAugmenter:
     without changing the meaning of the prompt.
     """
 
-    def __init__(self, n_augments=3):
+    def __init__(self, n_augments=BaseAugmenterConstants.DEFAULT_N_AUGMENTS):
         """
         Initialize the augmenter.
         
         Args:
-            n_augments: Number of variations to generate (default: 3)
+            n_augments: Number of variations to generate (default from constants)
         """
         self.n_augments = n_augments
 
