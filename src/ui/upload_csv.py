@@ -7,14 +7,22 @@ def render():
     st.title("Step 1: Upload Your Prompt Dataset")
     st.write("Please upload a CSV file with a `prompt` column.")
 
-    uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"])
+    uploaded_file = st.file_uploader("Upload a CSV", type=["csv"])
 
     if uploaded_file is not None:
         try:
             df = pd.read_csv(uploaded_file)
-            if 'prompt' not in df.columns:
-                st.error("CSV must contain a 'prompt' column.")
+            required_columns = ["prompt"]
+            if not all(col in df.columns for col in required_columns):
+                st.error(f"CSV must contain these columns: {', '.join(required_columns)}")
                 return
+
+            if "output" in df.columns:
+                st.session_state.output_data = df[["prompt", "output"]].set_index("prompt").to_dict()["output"]
+                st.info("✅ Output column detected and saved")
+            else:
+                st.warning("No 'output' column found. Some features may not work properly.")
+                st.session_state.output_data = {}
 
             st.session_state.csv_data = df
             st.success(f"Uploaded {len(df)} prompts.")
