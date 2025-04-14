@@ -93,17 +93,21 @@ def augment_part(
                 few_shot_data = []
                 for i, ann in enumerate(annotations):
                     if i != current_index:
-                        placeholder_str = ann["placeholder_prompt"]
-                        # Remove any placeholders except {CONTEXT}
-                        placeholder_str = re.sub(r"\{(?!CONTEXT)[^}]*\}", "", placeholder_str)
-                        # Remove text in parentheses
-                        placeholder_str = re.sub(r"\([^)]*\)", "", placeholder_str)
-                        # Replace {CONTEXT} with the real context
-                        real_context = ann["annotations"]["context"]["text"]
-                        placeholder_str = placeholder_str.replace("{CONTEXT}", real_context)
-                        fs_input = placeholder_str
-                        fs_output = ann["annotations"]["output"]["text"]
-                        few_shot_data.append({"input": fs_input, "output": fs_output})
+                        if "context" in ann["annotations"] and ann["annotations"]["context"]:
+                            real_context = ann["annotations"]["context"]["text"]
+                        else:
+                            continue
+                        fs_output = ""
+                        if "output" in ann["annotations"] and ann["annotations"]["output"]:
+                            fs_output = ann["annotations"]["output"]["text"]
+                        elif "output" in ann and ann["output"]:
+                            fs_output = ann["output"]
+                            
+                        # Only add if we have a valid output
+                        if fs_output:
+                            few_shot_data.append({"input": real_context, "output": fs_output})
+                        else:
+                            print(f"Warning: No output found for example {i}")
 
                 few_shot_df = pd.DataFrame(few_shot_data)
                 special_data = {"dataset": few_shot_df}
@@ -193,10 +197,13 @@ def process_annotations(annotations: List[Dict[str, Any]]) -> List[Dict[str, Any
         part_variations = {}
 
         for part_name, part_data in annotation["annotations"].items():
+            if part_name=="output":
+                continue
             text = part_data["text"]
             dimensions = part_data.get("dimensions", [])
             variant_counts = part_data.get("variant_counts", {})
-
+            # if part_name == "examples":
+            #     text = annotation["annotations"]["context"]["text"]
             variations = augment_part(
                 text, 
                 dimensions, 
@@ -222,8 +229,12 @@ def process_annotations(annotations: List[Dict[str, Any]]) -> List[Dict[str, Any
                         # Create new prompt
                         new_prompt = placeholder_format
                         new_prompt = new_prompt.replace("{TASK_DESCRIPTION}", task_desc)
+                        if "{EXAMPLES}" in new_prompt:
+                            new_prompt = new_prompt.replace("{EXAMPLES}", examples)
+                        else:
+                            if examples:
+                                new_prompt = new_prompt.replace("{CONTEXT}", examples+"\n"+"{CONTEXT}")
                         new_prompt = new_prompt.replace("{CONTEXT}", context)
-                        new_prompt = new_prompt.replace("{EXAMPLES}", examples)
                         new_prompt = new_prompt.replace("{CHOICES}", choices)
 
                         variation_obj = {
