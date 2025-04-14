@@ -11,6 +11,16 @@ DEFAULT_VARIATIONS_PER_AXIS = 3
 MIN_VARIATIONS_PER_AXIS = 1
 MAX_VARIATIONS_PER_AXIS = 10
 
+# Base augmenter constants
+class BaseAugmenterConstants:
+    # Default number of augmentations to generate
+    DEFAULT_N_AUGMENTS = 3
+
+# Augmentation pipeline constants
+class AugmentationPipelineConstants:
+    # Default maximum number of variations to generate
+    DEFAULT_MAX_VARIATIONS = 100
+
 # Constants for MultipleChoiceAugmenter
 class MultipleChoiceConstants:
     # Enumeration styles for multiple choice options
@@ -36,6 +46,10 @@ class MultiDocConstants:
     
     # Document title format
     DOC_TITLE_FORMAT = "Document {}: "
+    
+    # Default values for augmentation
+    DEFAULT_N_NEW_DOCS = 3
+    DEFAULT_N_PERMUTATIONS = 3
 
 # Constants for FewShotAugmenter
 class FewShotConstants:
@@ -48,6 +62,9 @@ class FewShotConstants:
     
     # Default random seed for sampling
     DEFAULT_RANDOM_SEED = 42
+    
+    # Default number of examples to include
+    DEFAULT_NUM_EXAMPLES = 1
 
 # Constants for NonLLMAugmenter
 class TextSurfaceAugmenterConstants:
@@ -59,7 +76,7 @@ class TextSurfaceAugmenterConstants:
         "q": "qwasedzx",
         "w": "wqesadrfcx",
         "e": "ewrsfdqazxcvgt",
-        "r": "retdgfwsxcvgt",
+        "r": "retdgfwsxcvbnju",
         "t": "tryfhgedcvbnju",
         "y": "ytugjhrfvbnji",
         "u": "uyihkjtgbnmlo",
