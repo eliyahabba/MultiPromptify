@@ -5,12 +5,13 @@ import random
 from typing import List, Optional, Dict, Any
 
 from src.axis_augmentation.base_augmenter import BaseAxisAugmenter
-from src.axis_augmentation.text_surface_augmenter import TextSurfaceAugmenter
 from src.axis_augmentation.context_augmenter import ContextAugmenter
-from src.axis_augmentation.multiple_choice_augmenter import MultipleChoiceAugmenter
-from src.axis_augmentation.paraphrase_instruct import Paraphrase
 from src.axis_augmentation.fewshot_augmenter import FewShotAugmenter
 from src.axis_augmentation.multidoc_augmenter import MultiDocAugmenter
+from src.axis_augmentation.multiple_choice_augmenter import MultipleChoiceAugmenter
+from src.axis_augmentation.paraphrase_instruct import Paraphrase
+from src.axis_augmentation.text_surface_augmenter import TextSurfaceAugmenter
+from src.utils.constants import AugmentationPipelineConstants, BaseAugmenterConstants
 
 
 class AugmentationPipeline:
@@ -19,7 +20,8 @@ class AugmentationPipeline:
     Each augmenter in the pipeline processes all variations produced by the previous augmenter.
     """
 
-    def __init__(self, augmenters: Optional[List[BaseAxisAugmenter]] = None, max_variations: int = 100):
+    def __init__(self, augmenters: Optional[List[BaseAxisAugmenter]] = None, 
+                 max_variations: int = AugmentationPipelineConstants.DEFAULT_MAX_VARIATIONS):
         """
         Initialize the augmentation pipeline.
 
@@ -34,11 +36,12 @@ class AugmentationPipeline:
             self.augmenters = augmenters
         else:
             self.augmenters = [
-                TextSurfaceAugmenter(n_augments=3),
+                TextSurfaceAugmenter(n_augments=BaseAugmenterConstants.DEFAULT_N_AUGMENTS),
                 ContextAugmenter(n_augments=2)
             ]
 
-    def apply_augmenter(self, augmenter: BaseAxisAugmenter, text: str, identification_data: Dict[str, Any] = None) -> List[str]:
+    def apply_augmenter(self, augmenter: BaseAxisAugmenter, text: str, identification_data: Dict[str, Any] = None) -> \
+    List[str]:
         """
         Apply a single augmenter to a text.
 
@@ -95,37 +98,46 @@ class AugmentationPipeline:
             # If the augmenter doesn't have an augment method, return the original text
             return [text]
 
-    def augment(self, text: str, identification_data: Dict[str, Any] = None) -> List[str]:
+    def augment(self, text: str, special_data: Dict[str, Any] = None) -> List[str]:
         """
-        Apply the augmentation pipeline to the input text.
-
+        Apply all augmenters to the text and return all variations.
+        
         Args:
-            text: The input text to augment.
-            identification_data: Optional identification data for augmenters that need it
-
+            text: The base text to augment.
+            special_data: Any special data needed by augmenters.
+            
         Returns:
-            A list of augmented texts.
+            List of augmented texts.
         """
         all_variations = [text]  # Start with the original text
 
+        print("\nAugmentation pipeline:")
+
+        # Apply each augmenter in sequence
         for i, augmenter in enumerate(self.augmenters):
             print(f"Applying augmenter {i+1}/{len(self.augmenters)}: {augmenter.__class__.__name__}")
             print(f"Input variations: {len(all_variations)}")
-
+            print(f"  Step {i + 1}: Applying {augmenter.__class__.__name__}")
             new_variations = []
 
-            # Apply the current augmenter to each existing variation
+            # Apply the current augmenter to each variation produced so far
             for variation in all_variations:
-                augmented = self.apply_augmenter(augmenter, variation, identification_data)
+                # Skip empty variations
+                augmented = self.apply_augmenter(augmenter, variation, special_data)
                 new_variations.extend(augmented)
+            print(f"    Generated {len(new_variations)} variations")
 
-            # Limit the number of variations if it exceeds the maximum
-            if len(new_variations) > self.max_variations:
-                new_variations = random.sample(new_variations, self.max_variations)
-
+            # Update the list of variations for the next augmenter
+            # Check if we've reached the maximum number of variations
+            if len(new_variations) >= self.max_variations:
+                print(f"  Reached maximum of {self.max_variations} variations")
+                all_variations = random.sample(new_variations, self.max_variations)
+                break
             all_variations = new_variations
-            print(f"Output variations: {len(all_variations)}")
+            print(f"  After step  {i + 1}: {len(all_variations)} total variations")
 
+
+        print(f"Final: Generated {len(all_variations)} total variations")
         return all_variations
 
 
@@ -157,7 +169,7 @@ def run_basic_augmentation_example():
     print(f"\nGenerated {len(augmented_texts)} variations:")
 
     for i, text in enumerate(augmented_texts):
-        print(f"\n{i+1}. {text}")
+        print(f"\n{i + 1}. {text}")
 
 
 def run_multiple_choice_example():
@@ -184,7 +196,7 @@ def run_multiple_choice_example():
     print(f"\nGenerated {len(mc_variations)} variations:")
 
     for i, text in enumerate(mc_variations):
-        print(f"\n{i+1}. {text}")
+        print(f"\n{i + 1}. {text}")
 
 
 def run_fewshot_combined_example():
@@ -239,7 +251,7 @@ def run_fewshot_combined_example():
 
     print(f"\nDirect few-shot results ({len(direct_results)} variations):")
     for i, text in enumerate(direct_results):
-        print(f"\n{i+1}. {text}")
+        print(f"\n{i + 1}. {text}")
         print("-" * 50)
 
     # Create a pipeline that includes the few-shot augmenter along with other augmenters
@@ -258,7 +270,7 @@ def run_fewshot_combined_example():
     print(f"\nGenerated {len(combined_results)} variations with few-shot + other augmenters:")
 
     for i, text in enumerate(combined_results):
-        print(f"\n{i+1}. {text}")
+        print(f"\n{i + 1}. {text}")
         print("-" * 50)
 
 
@@ -294,7 +306,7 @@ def run_multidoc_combined_example():
     # Display the original documents
     print(f"\nOriginal documents:")
     for i, doc in enumerate(docs):
-        print(f"{i+1}. {doc}")
+        print(f"{i + 1}. {doc}")
     print("-" * 50)
 
     # Apply the combined pipeline
@@ -303,7 +315,7 @@ def run_multidoc_combined_example():
     print(f"\nGenerated {len(combined_results)} variations with multi-doc + other augmenters:")
 
     for i, text in enumerate(combined_results):
-        print(f"\n{i+1}. {text[:200]}...")  # Show first 200 chars
+        print(f"\n{i + 1}. {text[:200]}...")  # Show first 200 chars
         print("-" * 50)
 
 
