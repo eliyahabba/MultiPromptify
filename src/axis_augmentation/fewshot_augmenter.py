@@ -9,24 +9,36 @@ from src.utils.constants import FewShotConstants, BaseAugmenterConstants
 class FewShotAugmenter(BaseAxisAugmenter):
     """
     This augmenter handles few-shot examples for question answering tasks.
-    It selects examples from a dataset to provide context for each question.
+    It can vary either the specific examples used or the number of examples.
     """
 
-    def __init__(self, num_examples: int = FewShotConstants.DEFAULT_NUM_EXAMPLES, 
-                 n_augments: int = BaseAugmenterConstants.DEFAULT_N_AUGMENTS):
+    def __init__(self, 
+                 n_augments: int = BaseAugmenterConstants.DEFAULT_N_AUGMENTS,
+                 num_examples: int = FewShotConstants.DEFAULT_NUM_EXAMPLES, 
+                 mode: str = "both"):  # Add mode parameter
         """
         Initialize the few-shot augmenter.
         
         Args:
+            n_augments: Number of variations to generate
             num_examples: Number of examples to include for each question
-            n_augments: Number of variations to generate (used for consistency with other augmenters)
+            mode: Operation mode - "which" (vary examples), "how_many" (vary count), or "both"
         """
         super().__init__(n_augments=n_augments)
         self.num_examples = num_examples
         self.dataset = None
+        self.mode = mode  # Store the mode
+        
+        # For "how_many" mode, we'll use these counts
+        self.example_counts = [1, 2, 3, 5] if num_examples >= 5 else list(range(1, num_examples + 1))
 
     def get_name(self):
-        return "Few-Shot Examples"
+        if self.mode == "which":
+            return "Which Few-Shot Examples"
+        elif self.mode == "how_many":
+            return "How Many Few-Shot Examples"
+        else:
+            return "Few-Shot Examples"
 
     def set_dataset(self, dataset: pd.DataFrame):
         """
@@ -41,7 +53,7 @@ class FewShotAugmenter(BaseAxisAugmenter):
 
     def augment(self, prompt: str, identification_data: Dict[str, Any] = None) -> List[str]:
         """
-        Generate few-shot variations of the prompt.
+        Generate few-shot variations of the prompt based on the selected mode.
         
         Args:
             prompt: The original prompt text
@@ -58,15 +70,29 @@ class FewShotAugmenter(BaseAxisAugmenter):
         if dataset is None:
             return [prompt]
         
+        # Check if a specific mode is requested in identification_data
+        requested_mode = identification_data.get("fewshot_mode", self.mode) if identification_data else self.mode
+        
+        if requested_mode == "which":
+            return self._augment_which_examples(prompt, dataset)
+        elif requested_mode == "how_many":
+            return self._augment_how_many_examples(prompt, dataset)
+        else:  # "both" or any other value
+            return self._augment_both(prompt, dataset)
+
+    def _augment_which_examples(self, prompt: str, dataset: pd.DataFrame) -> List[str]:
+        """Vary which specific examples are used while keeping the count constant."""
         variations = []
         used_variations = set()
         attempts = 0
-        # We'll allow more attempts than n_augments, in case we get duplicates
+        
         while len(variations) < self.n_augments and attempts < self.n_augments * 2:
-            # Get random examples for this variation
-            # We pass None for random_state so each sample can differ
-            examples = self._get_examples_for_question(prompt, dataset, random_state=None)
+            # Get random examples for this variation with fixed count
+            examples = self._get_examples_for_question(prompt, dataset, 
+                                                      count=self.num_examples,
+                                                      random_state=None)
             formatted = self.format_examples(examples)
+            
             # Only add if it's new
             if formatted not in used_variations:
                 variations.append(formatted)
@@ -74,6 +100,81 @@ class FewShotAugmenter(BaseAxisAugmenter):
             attempts += 1
         
         return variations[:self.n_augments]
+
+    def _augment_how_many_examples(self, prompt: str, dataset: pd.DataFrame) -> List[str]:
+        """Vary the number of examples while trying to keep the specific examples consistent."""
+        variations = []
+        
+        # First, get a pool of examples that we'll use
+        max_examples = max(self.example_counts)
+        example_pool = self._get_examples_for_question(prompt, dataset, 
+                                                     count=max_examples,
+                                                     random_state=42)  # Fixed seed for consistency
+        
+        # Now create variations with different counts
+        for count in self.example_counts:
+            if count <= len(example_pool):
+                examples = example_pool[:count]  # Take the first 'count' examples
+                formatted = self.format_examples(examples)
+                variations.append(formatted)
+                
+                # If we have enough variations, stop
+                if len(variations) >= self.n_augments:
+                    break
+        
+        return variations[:self.n_augments]
+
+    def _augment_both(self, prompt: str, dataset: pd.DataFrame) -> List[str]:
+        """Vary both which examples are used and how many."""
+        # Get variations for each mode
+        which_variations = self._augment_which_examples(prompt, dataset)
+        how_many_variations = self._augment_how_many_examples(prompt, dataset)
+        
+        # Combine and shuffle
+        combined = which_variations + how_many_variations
+        random.shuffle(combined)
+        
+        return combined[:self.n_augments]
+
+    def _get_examples_for_question(self, question: str, df, count=None, random_state=None) -> List[str]:
+        """
+        Get few-shot examples for a specific question, skipping the question itself.
+        
+        Args:
+            question: The question to get examples for
+            df: DataFrame with examples
+            count: Number of examples to get (defaults to self.num_examples)
+            random_state: Random state for reproducibility
+            
+        Returns:
+            List of formatted example strings
+        """
+        result = []
+        temp_df = df.copy()
+
+        # Filter out the current question
+        temp_df = temp_df[temp_df["input"] != question]
+
+        if len(temp_df) == 0:
+            return []
+
+        # Use specified count or default
+        num_examples = count if count is not None else self.num_examples
+        num_examples = min(num_examples, len(temp_df))
+        
+        temp_df = temp_df.sample(
+            n=num_examples,
+            random_state=random_state,
+            replace=False
+        )
+
+        # Format the examples
+        for i in range(num_examples):
+            example_input = temp_df.iloc[i]["input"]
+            example_output = temp_df.iloc[i]["output"]
+            result.append(FewShotConstants.EXAMPLE_FORMAT.format(example_input, example_output))
+
+        return result
 
     def augment_all_questions(self, df) -> Dict[str, List[str]]:
         """
@@ -96,35 +197,6 @@ class FewShotAugmenter(BaseAxisAugmenter):
             question = row["input"]
             examples = self._get_examples_for_question(question, df)
             result[question] = examples
-
-        return result
-
-    def _get_examples_for_question(self, question: str, df, random_state=None) -> List[str]:
-        """
-        Get few-shot examples for a specific question, but now skipping the question itself.
-        """
-        result = []
-        temp_df = df.copy()
-
-        # Filter out the current question
-        temp_df = temp_df[temp_df["input"] != question]
-
-        if len(temp_df) == 0:
-            return []
-
-        # Only change the sampling logic:
-        num_examples = min(self.num_examples, len(temp_df))
-        temp_df = temp_df.sample(
-            n=num_examples,
-            random_state=random_state,
-            replace=False  # ensure no sampling with replacement
-        )
-
-        # Use these examples as before
-        for i in range(num_examples):
-            example_input = temp_df.iloc[i]["input"]
-            example_output = temp_df.iloc[i]["output"]
-            result.append(FewShotConstants.EXAMPLE_FORMAT.format(example_input, example_output))
 
         return result
 
@@ -204,7 +276,7 @@ class FewShotAugmenter(BaseAxisAugmenter):
 
 
 if __name__ == "__main__":
-    # Load sample data
+    # Create sample data
     print("Creating sample data...")
     sample_data = pd.DataFrame({
         "input": [
@@ -223,27 +295,48 @@ if __name__ == "__main__":
         ]
     })
     print(f"Created sample data with {len(sample_data)} examples")
-
-    # Create augmenter and generate examples
-    augmenter = FewShotAugmenter(num_examples=2, n_augments=3)
-    augmenter.set_dataset(sample_data)
     
-    # Test the augment method
+    # Test question
     test_question = "What is the tallest mountain in the world?"
-    variations = augmenter.augment(test_question)
     
-    print(f"\nOriginal question: {test_question}")
-    print(f"\nGenerated {len(variations)} variations:")
-    for i, variation in enumerate(variations):
+    # Test 1: "which" mode - vary which examples are used
+    print("\n===== Testing 'which' mode =====")
+    which_augmenter = FewShotAugmenter(n_augments=3, num_examples=2, mode="which")
+    which_augmenter.set_dataset(sample_data)
+    which_variations = which_augmenter.augment(test_question)
+    
+    print(f"Generated {len(which_variations)} variations:")
+    for i, var in enumerate(which_variations):
         print(f"\nVariation {i+1}:")
-        print(variation)
+        print(var)
     
-    # Test augment with identification_data
-    print("\n\nTesting augment with identification_data:")
-    # Create a new augmenter without setting dataset
-    id_augmenter = FewShotAugmenter(num_examples=2, n_augments=2)
+    # Test 2: "how_many" mode - vary the number of examples
+    print("\n===== Testing 'how_many' mode =====")
+    how_many_augmenter = FewShotAugmenter(n_augments=3, num_examples=5, mode="how_many")
+    how_many_augmenter.set_dataset(sample_data)
+    how_many_variations = how_many_augmenter.augment(test_question)
     
-    # Create identification_data with dataset
+    print(f"Generated {len(how_many_variations)} variations:")
+    for i, var in enumerate(how_many_variations):
+        print(f"\nVariation {i+1}:")
+        print(var)
+    
+    # Test 3: "both" mode - vary both which examples and how many
+    print("\n===== Testing 'both' mode =====")
+    both_augmenter = FewShotAugmenter(n_augments=5, num_examples=3, mode="both")
+    both_augmenter.set_dataset(sample_data)
+    both_variations = both_augmenter.augment(test_question)
+    
+    print(f"Generated {len(both_variations)} variations:")
+    for i, var in enumerate(both_variations):
+        print(f"\nVariation {i+1}:")
+        print(var)
+    
+    # Test 4: Using identification_data
+    print("\n===== Testing with identification_data =====")
+    id_augmenter = FewShotAugmenter(n_augments=2, num_examples=2, mode="which")
+    
+    # Create identification_data with dataset and mode override
     identification_data = {
         "dataset": pd.DataFrame({
             "input": [
@@ -258,59 +351,13 @@ if __name__ == "__main__":
                 "Mercury",
                 "Tokyo"
             ]
-        })
+        }),
+        "fewshot_mode": "how_many"  # Override the mode
     }
     
-    # Test augment with identification_data
-    test_q = "What is the speed of sound?"
-    id_variations = id_augmenter.augment(test_q, identification_data)
+    id_variations = id_augmenter.augment(test_question, identification_data)
     
-    print(f"Original question: {test_q}")
     print(f"Generated {len(id_variations)} variations using identification_data:")
-    for i, variation in enumerate(id_variations):
+    for i, var in enumerate(id_variations):
         print(f"\nVariation {i+1}:")
-        print(variation)
-    
-    # Test augment_all_questions
-    all_examples = augmenter.augment_all_questions(sample_data)
-    
-    print("\n\nFew-shot examples for all questions:")
-    for question, examples in all_examples.items():
-        print(f"\nQuestion: {question}")
-        print("Few-shot format:")
-        print(augmenter.format_examples(examples))
-        print("-" * 50)
-
-    # Test create_few_shot_prompt
-    print("\n\nTesting create_few_shot_prompt:")
-    example_pairs = [
-        ("What is the capital of Italy?", "Rome"),
-        ("What is the largest ocean?", "Pacific Ocean"),
-        ("Who painted the Mona Lisa?", "Leonardo da Vinci")
-    ]
-    test_q = "What is the speed of light?"
-
-    few_shot_prompt = augmenter.create_few_shot_prompt(test_q, example_pairs)
-    print(few_shot_prompt)
-
-    # Test augment_with_examples
-    print("\n\nTesting augment_with_examples:")
-    example_pool = [
-        ("What is the capital of Italy?", "Rome"),
-        ("What is the largest ocean?", "Pacific Ocean"),
-        ("Who painted the Mona Lisa?", "Leonardo da Vinci"),
-        ("What is the chemical symbol for water?", "H2O"),
-        ("What is the tallest building in the world?", "Burj Khalifa"),
-        ("Who wrote 'Pride and Prejudice'?", "Jane Austen")
-    ]
-    test_q = "What is the speed of light?"
-
-    # Create an augmenter with 2 examples per prompt and 3 variations
-    sampling_augmenter = FewShotAugmenter(num_examples=2, n_augments=3)
-    few_shot_variations = sampling_augmenter.augment_with_examples(test_q, example_pool)
-
-    print(f"Generated {len(few_shot_variations)} variations:")
-    for i, variation in enumerate(few_shot_variations):
-        print(f"\nVariation {i+1}:")
-        print(variation)
-        print("-" * 50)
+        print(var)
