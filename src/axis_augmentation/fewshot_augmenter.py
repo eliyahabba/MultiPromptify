@@ -3,7 +3,7 @@ import pandas as pd
 import random
 
 from src.axis_augmentation.base_augmenter import BaseAxisAugmenter
-from src.utils.constants import FewShotConstants
+from src.utils.constants import FewShotConstants, BaseAugmenterConstants
 
 
 class FewShotAugmenter(BaseAxisAugmenter):
@@ -12,7 +12,8 @@ class FewShotAugmenter(BaseAxisAugmenter):
     It selects examples from a dataset to provide context for each question.
     """
 
-    def __init__(self, num_examples: int = 1, n_augments: int = 3):
+    def __init__(self, num_examples: int = FewShotConstants.DEFAULT_NUM_EXAMPLES, 
+                 n_augments: int = BaseAugmenterConstants.DEFAULT_N_AUGMENTS):
         """
         Initialize the few-shot augmenter.
         
