@@ -44,18 +44,20 @@ def display_color_legend():
 def highlight_parts(final_prompt, parts):
     """
     Replace each occurrence of parts[part_name] in final_prompt with a colored span
-    to highlight it according to the part_name.
+    to highlight it according to the part_name, while preserving newlines.
     """
     highlighted = final_prompt
     for part_name, part_text in parts.items():
         if not part_text:
             continue
         color = PART_COLORS.get(part_name, "#FFFFB8")  # default light yellow
+        formatted_text = part_text.replace("\n", "<br>")
         highlighted = highlighted.replace(
             part_text,
-            f'<span style="background-color: {color}; padding: 2px; margin: 1px; border-radius: 3px;">{part_text}</span>'
+            f'<span style="background-color: {color}; padding: 2px; margin: 1px; border-radius: 3px; white-space: pre-wrap;">{formatted_text}</span>'
         )
     return highlighted
+
 
 def display_all_examples(data):
     """Display all examples and their variations"""
