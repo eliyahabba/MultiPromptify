@@ -12,7 +12,7 @@ def render():
     st.title("Step 6: Run Augmentations")
 
     # Check if we're using files or session state
-    using_files = st.session_state.get('save_files', True)
+    using_files = st.session_state.get('save_files', False)
     
     try:
         if using_files:
