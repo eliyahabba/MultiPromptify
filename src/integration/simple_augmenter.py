@@ -79,7 +79,7 @@ def augment_part(
     special_data = {}
 
     for dim in dimensions:
-        # Get the variant count for this dimension (default to constant value if not specified)
+        # Get the variant count for this dimension
         n_augments = variant_counts.get(dim, DEFAULT_VARIATIONS_PER_AXIS)
         print(f"Processing dimension: {dim} with {n_augments} requested variants")
         
@@ -106,13 +106,20 @@ def augment_part(
                         few_shot_data.append({"input": fs_input, "output": fs_output})
 
                 few_shot_df = pd.DataFrame(few_shot_data)
+                special_data = {"dataset": few_shot_df}
 
-                special_data = {
-                    "dataset": few_shot_df
-                }
-
-                augmenter = augmenter_class(num_examples=2, n_augments=n_augments)
-                print(f"Created FewShotAugmenter with n_augments={n_augments}")
+                # Set the appropriate mode based on the dimension
+                if dim == "Which few-shot examples":
+                    mode = "which"
+                elif dim == "How many few-shot examples":
+                    mode = "how_many"
+                else:
+                    mode = "both"
+                
+                # Create the augmenter with the appropriate mode
+                augmenter = augmenter_class(n_augments=n_augments, num_examples=2, mode=mode)
+                special_data["fewshot_mode"] = mode  # Pass the mode to the augmenter
+                print(f"Created FewShotAugmenter with mode={mode}, n_augments={n_augments}")
             else:
                 augmenter = augmenter_class(n_augments=n_augments)
                 print(f"Created {augmenter_class.__name__} with n_augments={n_augments}")
