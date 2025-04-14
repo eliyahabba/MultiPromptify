@@ -92,6 +92,7 @@ class ContextAugmenter(BaseAxisAugmenter):
             2. The added context must NOT contain any hint or answer to the original prompt.
             3. The added context should NOT change the meaning or expected answer of the original prompt.
             4. The context should provide additional background or related information that feels natural.
+            5. You MUST preserve the original prompt EXACTLY as given, including any spelling or grammatical errors. Do not change a single character in the original prompt.
 
             Original prompt:
             "{prompt}"
@@ -107,6 +108,7 @@ class ContextAugmenter(BaseAxisAugmenter):
             2. The added context must NOT contain any hint or answer to the original prompt.
             3. The added context should NOT change the meaning or expected answer of the original prompt.
             4. The context should provide additional background or related information that feels natural.
+            5. You MUST preserve the original prompt EXACTLY as given, including any spelling or grammatical errors. Do not change a single character in the original prompt.
 
             Original prompt:
             "{prompt}"
@@ -122,6 +124,7 @@ class ContextAugmenter(BaseAxisAugmenter):
             2. The added context must NOT contain any hint or answer to the original prompt.
             3. The added context should NOT change the meaning or expected answer of the original prompt.
             4. The context should provide additional background or related information that feels natural.
+            5. You MUST preserve the original prompt EXACTLY as given, including any spelling or grammatical errors. Do not change a single character in the original prompt.
 
             Original prompt:
             "{prompt}"
