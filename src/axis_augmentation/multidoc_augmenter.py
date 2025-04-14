@@ -4,6 +4,7 @@ from random import sample
 from typing import List
 
 from datasets import load_dataset
+
 from src.utils.constants import MultiDocConstants
 
 
@@ -14,7 +15,7 @@ class MultiDocAugmenter():
     """
 
     def add_random_contexts(self, docs: List[str], corpus: List[str],
-                            n_new_docs: int = 3) -> List[str]:
+                            n_new_docs: int = MultiDocConstants.DEFAULT_N_NEW_DOCS) -> List[str]:
         """
         Adds n_new_docs random contexts from the corpus to the end of the docs list.
         :param docs: a list of documents to augment
@@ -27,7 +28,8 @@ class MultiDocAugmenter():
         augmented_docs = docs + irrelevant_docs
         return augmented_docs
 
-    def permute_docs_order(self, docs: List[str], n_permutations: int = 3) -> list[list[str, ...]]:
+    def permute_docs_order(self, docs: List[str], n_permutations: int = MultiDocConstants.DEFAULT_N_PERMUTATIONS) -> \
+    list[list[str, ...]]:
         """
         Generates variations of the order of the documents in the list.
         :param docs: a list of documents to augment
@@ -61,11 +63,13 @@ class MultiDocAugmenter():
 
         elif concat_type == MultiDocConstants.TITLES:
             # Add titles to each document
-            return "\n".join([f"{MultiDocConstants.DOC_TITLE_FORMAT.format(i + 1)}\n{doc}\n" for i, doc in enumerate(docs)])
+            return "\n".join(
+                [f"{MultiDocConstants.DOC_TITLE_FORMAT.format(i + 1)}\n{doc}\n" for i, doc in enumerate(docs)])
 
         elif concat_type == MultiDocConstants.DASHES:
             # Add dashes between documents
-            return "\n".join([f"{doc}\n{'-' * MultiDocConstants.DEFAULT_SEPARATOR_LENGTH}" for i, doc in enumerate(docs)])
+            return "\n".join(
+                [f"{doc}\n{'-' * MultiDocConstants.DEFAULT_SEPARATOR_LENGTH}" for i, doc in enumerate(docs)])
 
         elif "special_" in concat_type:
             # Use the specified separator
