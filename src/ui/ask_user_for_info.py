@@ -153,7 +153,8 @@ def run_prediction():
     # Store results in session state
     if not save_files and results_df is not None:
         st.session_state['predictions_df'] = results_df
-
+    else:
+        st.session_state['predictions_df'] = pd.read_csv(out_path)
 def save_annotation_files(output_dir):
     """Save annotation files to the output directory"""
     # Save annotations to file
