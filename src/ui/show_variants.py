@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 
 # Define background colors for each part of the prompt
@@ -51,6 +52,8 @@ def highlight_parts(final_prompt, parts):
         if not part_text:
             continue
         color = PART_COLORS.get(part_name, "#FFFFB8")  # default light yellow
+        if pd.isna(part_text):
+            continue
         formatted_text = part_text.replace("\n", "<br>")
         highlighted = highlighted.replace(
             part_text,

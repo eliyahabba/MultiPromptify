@@ -1,3 +1,6 @@
+import pandas as pd
+
+
 def map_csv_to_json(df, annotations):
     output_jsons = []
     dimensions_to_each_dim = {}
@@ -15,10 +18,14 @@ def map_csv_to_json(df, annotations):
             if col in ["dim_breakdown", "output"]:  # Skip output and dim_breakdown columns
                 continue
             if col.startswith("dim_"):
+                print(f"Processing column: {col}")
                 dim_name = col.replace("dim_", "")
                 annotations[dim_name] = {"text": row[col], "dimensions": dimensions_to_each_dim[dim_name], "variant_counts": num_of_var_to_each_dim[dim_name]}
-                placeholder_prompt = placeholder_prompt.replace(row[col], "{" + dim_name.upper() + "}")
-        
+                if pd.notna(row[col]) and row[col] != "":
+                    placeholder_prompt = placeholder_prompt.replace(row[col], "{" + dim_name.upper() + "}")
+                else:
+                    print(f"Skipping empty or NaN value in column: {col}")
+                print(f"Updated placeholder prompt: {placeholder_prompt}")
         # Add output to annotations
         annotations["output"] = {"text": output_text}
         

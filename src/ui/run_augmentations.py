@@ -40,7 +40,6 @@ def render():
             annotations_data = st.session_state.annotations_data
         
         # Convert to the format needed for augmentation
-        final_json = map_csv_to_json(df, annotations_data)
 
         # Create a separate button for navigation to avoid conflicts
         col1, col2 = st.columns(2)
@@ -54,12 +53,13 @@ def render():
                 )
                 if st.button("Run Augmentations"):
                     with st.spinner("Running augmentations..."):
+                        final_json = map_csv_to_json(df, annotations_data)
                         data = simple_augmenter_main(final_json)
                         # Store in session state
                         st.session_state["augmented_data"] = data
                         st.success("Augmentations completed successfully!")
                         # Force a rerun to update the UI state
-                        st.rerun()
+                        # st.rerun()
 
         # Display results if we have augmented data
         if "augmented_data" in st.session_state:
@@ -92,6 +92,7 @@ def render():
             if st.button("Continue to Step 7 (Show Variants)", key="continue_to_step7"):
                 st.session_state.page = 7
                 st.rerun()
+
     except Exception as e:
         st.error(f"Error processing data: {str(e)}")
         st.error("Please go back to step 5 and try again.")

@@ -3,8 +3,9 @@ A simplified script that applies augmentation based on dimensions in annotations
 """
 import argparse
 import json
-import re
 from typing import Dict, List, Any
+
+import pandas as pd
 
 from src.axis_augmentation.augmentation_pipeline import AugmentationPipeline
 from src.axis_augmentation.context_augmenter import ContextAugmenter
@@ -69,7 +70,7 @@ def augment_part(
     print(f"\n==== Augmenting {part_name} ====")
     print(f"Dimensions selected: {dimensions}")
     print(f"Variant counts: {variant_counts}")
-    
+
     if (not text and part_name != "examples") or not dimensions:
         print("No text or dimensions - returning original text")
         return [text]
@@ -82,7 +83,7 @@ def augment_part(
         # Get the variant count for this dimension
         n_augments = variant_counts.get(dim, DEFAULT_VARIATIONS_PER_AXIS)
         print(f"Processing dimension: {dim} with {n_augments} requested variants")
-        
+
         if dim in DIMENSION_TO_AUGMENTER:
             augmenter_class = DIMENSION_TO_AUGMENTER[dim]
             print(f"Using augmenter class: {augmenter_class.__name__}")
@@ -102,7 +103,7 @@ def augment_part(
                             fs_output = ann["annotations"]["output"]["text"]
                         elif "output" in ann and ann["output"]:
                             fs_output = ann["output"]
-                            
+
                         # Only add if we have a valid output
                         if fs_output:
                             few_shot_data.append({"input": real_context, "output": fs_output})
@@ -119,7 +120,7 @@ def augment_part(
                     mode = "how_many"
                 else:
                     mode = "both"
-                
+
                 # Create the augmenter with the appropriate mode
                 augmenter = augmenter_class(n_augments=n_augments, num_examples=2, mode=mode)
                 special_data["fewshot_mode"] = mode  # Pass the mode to the augmenter
@@ -164,7 +165,7 @@ def augment_part(
         return [text]
 
     print(f"Created pipeline with {len(augmenters)} augmenters")
-    
+
     # Create pipeline with selected augmenters
     pipeline = AugmentationPipeline(augmenters=augmenters, max_variations=10)
 
@@ -172,10 +173,10 @@ def augment_part(
     variations = pipeline.augment(text, special_data)
     print(f"Generated {len(variations)} total variations")
     for i, var in enumerate(variations[:3]):  # Show first 3 variations only to avoid clutter
-        print(f"  Variation {i+1}: {var[:50]}{'...' if len(var) > 50 else ''}")
+        print(f"  Variation {i + 1}: {var[:50]}{'...' if len(var) > 50 else ''}")
     if len(variations) > 3:
-        print(f"  ...and {len(variations)-3} more variations")
-    
+        print(f"  ...and {len(variations) - 3} more variations")
+
     return variations
 
 
@@ -197,7 +198,7 @@ def process_annotations(annotations: List[Dict[str, Any]]) -> List[Dict[str, Any
         part_variations = {}
 
         for part_name, part_data in annotation["annotations"].items():
-            if part_name=="output":
+            if part_name == "output":
                 continue
             text = part_data["text"]
             dimensions = part_data.get("dimensions", [])
@@ -205,11 +206,11 @@ def process_annotations(annotations: List[Dict[str, Any]]) -> List[Dict[str, Any
             # if part_name == "examples":
             #     text = annotation["annotations"]["context"]["text"]
             variations = augment_part(
-                text, 
-                dimensions, 
+                text,
+                dimensions,
                 variant_counts,
-                part_name, 
-                annotations, 
+                part_name,
+                annotations,
                 idx
             )
             part_variations[part_name] = variations
@@ -227,16 +228,27 @@ def process_annotations(annotations: List[Dict[str, Any]]) -> List[Dict[str, Any
                             break
 
                         # Create new prompt
+                        print(f"Start to replace placeholders for {idx} ")
                         new_prompt = placeholder_format
-                        new_prompt = new_prompt.replace("{TASK_DESCRIPTION}", task_desc)
+                        if pd.notna(task_desc) and task_desc != "":
+                            print(f"try to replace TASK_DESCRIPTION with {task_desc} ")
+                            new_prompt = new_prompt.replace("{TASK_DESCRIPTION}", task_desc)
                         if "{EXAMPLES}" in new_prompt:
-                            new_prompt = new_prompt.replace("{EXAMPLES}", examples)
+                            if pd.notna(examples) and examples != "":
+                                print(f"try to replace EXAMPLES with {examples} ")
+                                new_prompt = new_prompt.replace("{EXAMPLES}", examples)
                         else:
-                            if examples:
-                                new_prompt = new_prompt.replace("{CONTEXT}", examples+"\n"+"{CONTEXT}")
-                        new_prompt = new_prompt.replace("{CONTEXT}", context)
-                        new_prompt = new_prompt.replace("{CHOICES}", choices)
+                            if examples and pd.notna(examples) and examples != "":
+                                print(f"try to replace CONTEXT with {examples}+ CONTEXT ")
+                                new_prompt = new_prompt.replace("{CONTEXT}", examples + "\n" + "{CONTEXT}")
+                        if pd.notna(context) and context != "":
+                            print(f"try to replace CONTEXT with {context} ")
+                            new_prompt = new_prompt.replace("{CONTEXT}", context)
+                        if pd.notna(choices) and choices != "":
+                            print(f"try to replace CHOICES with {choices} ")
+                            new_prompt = new_prompt.replace("{CHOICES}", choices)
 
+                        print(f"Finish to replace placeholders for {idx} ")
                         variation_obj = {
                             "final_prompt": new_prompt,
                             "parts": {
